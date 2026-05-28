@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "technical-contract-research": {
+      "command": "docker",
+      "args": [
+        "compose",
+        "--profile",
+        "mcp",
+        "run",
+        "--rm",
+        "-i",
+        "mcp"
+      ]
+    }
+  }
+}

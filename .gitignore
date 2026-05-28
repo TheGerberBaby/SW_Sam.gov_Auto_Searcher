@@ -1,0 +1,33 @@
+# Local secrets and machine-specific config
+.env
+.env.*
+!.env.example
+
+# Python/runtime noise
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local SAM.gov mirror and document cache
+data/*.db
+data/*.db-*
+data/*.sqlite*
+data/ContractOpportunitiesFullCSV.csv*
+data/*.csv
+data/last_sync.txt
+data/document-cache/
+
+# Generated research exports
+*.xlsx
+*_Leads_*.csv
+QuoteBack_*.csv
+SW_MixedLeads*.xlsx
+
+# Local logs and OS metadata
+*.log
+.DS_Store
+Thumbs.db

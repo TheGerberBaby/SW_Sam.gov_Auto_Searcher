@@ -1,0 +1,4 @@
+interface:
+  display_name: "Elastic Contract Leads"
+  short_description: "Find SAM.gov work aligned to Elastic engineering"
+  default_prompt: "Use $elastic-contract-leads to find current SAM.gov opportunities aligned to my Elastic engineering skills."
