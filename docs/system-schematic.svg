@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">SW SAM.gov Auto Searcher system schematic</title>
+  <desc id="desc">Box and arrow schematic showing public SAM.gov sources feeding local scripts, SQLite, Elasticsearch, an MCP server, AI clients, and research outputs.</desc>
+  <defs>
+    <style>
+      .page { fill: #f7fafc; }
+      .title { font: 700 32px "Segoe UI", Arial, sans-serif; fill: #102033; }
+      .subtitle { font: 400 16px "Segoe UI", Arial, sans-serif; fill: #506070; }
+      .lane { fill: #ffffff; stroke: #d5dde8; stroke-width: 2; rx: 18; }
+      .laneTitle { font: 700 17px "Segoe UI", Arial, sans-serif; fill: #223044; letter-spacing: .2px; }
+      .box { stroke-width: 2; rx: 14; }
+      .boxText { font: 700 15px "Segoe UI", Arial, sans-serif; fill: #111827; }
+      .boxSub { font: 400 12px "Segoe UI", Arial, sans-serif; fill: #4b5563; }
+      .label { font: 700 12px "Segoe UI", Arial, sans-serif; fill: #415168; }
+      .small { font: 400 11px "Segoe UI", Arial, sans-serif; fill: #64748b; }
+      .arrow { fill: none; stroke: #314866; stroke-width: 2.4; marker-end: url(#arrowHead); }
+      .softArrow { fill: none; stroke: #6b7f99; stroke-width: 2; stroke-dasharray: 7 7; marker-end: url(#arrowHeadSoft); }
+      .source { fill: #e8f2ff; stroke: #4f8edb; }
+      .tool { fill: #ecfdf5; stroke: #17a36b; }
+      .store { fill: #fff7ed; stroke: #f08a24; }
+      .ai { fill: #f5f3ff; stroke: #7c5cff; }
+      .out { fill: #fdf2f8; stroke: #db4f92; }
+      .guide { fill: #f8fafc; stroke: #94a3b8; }
+    </style>
+    <marker id="arrowHead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#314866"/>
+    </marker>
+    <marker id="arrowHeadSoft" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#6b7f99"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity=".10"/>
+    </filter>
+  </defs>
+
+  <rect class="page" width="1280" height="760"/>
+  <text class="title" x="48" y="56">SW SAM.gov Auto Searcher</text>
+  <text class="subtitle" x="48" y="84">Public opportunity discovery + solicitation document evidence + AI-assisted research workflow</text>
+
+  <rect class="lane" x="34" y="116" width="242" height="450" filter="url(#shadow)"/>
+  <text class="laneTitle" x="58" y="150">Public Sources</text>
+
+  <rect class="box source" x="58" y="180" width="194" height="74"/>
+  <text class="boxText" x="76" y="208">SAM.gov Extract</text>
+  <text class="boxSub" x="76" y="230">daily public CSV</text>
+
+  <rect class="box source" x="58" y="294" width="194" height="74"/>
+  <text class="boxText" x="76" y="322">SAM.gov API</text>
+  <text class="boxSub" x="76" y="344">live fallback search</text>
+
+  <rect class="box source" x="58" y="408" width="194" height="88"/>
+  <text class="boxText" x="76" y="436">Solicitation Files</text>
+  <text class="boxSub" x="76" y="458">PDF, DOCX, TXT,</text>
+  <text class="boxSub" x="76" y="476">HTML, CSV attachments</text>
+
+  <rect class="lane" x="330" y="116" width="274" height="450" filter="url(#shadow)"/>
+  <text class="laneTitle" x="354" y="150">Local Scripts</text>
+
+  <rect class="box tool" x="354" y="180" width="226" height="74"/>
+  <text class="boxText" x="372" y="208">sync_bulk.py</text>
+  <text class="boxSub" x="372" y="230">download and normalize</text>
+
+  <rect class="box tool" x="354" y="294" width="226" height="74"/>
+  <text class="boxText" x="372" y="322">search_bulk.py</text>
+  <text class="boxSub" x="372" y="344">fast local filtering</text>
+
+  <rect class="box tool" x="354" y="408" width="226" height="74"/>
+  <text class="boxText" x="372" y="436">document_store.py</text>
+  <text class="boxSub" x="372" y="458">extract, chunk, index</text>
+
+  <rect class="box tool" x="354" y="506" width="226" height="48"/>
+  <text class="boxText" x="372" y="536">find_contracts.py</text>
+
+  <rect class="lane" x="660" y="116" width="252" height="450" filter="url(#shadow)"/>
+  <text class="laneTitle" x="684" y="150">Local Storage</text>
+
+  <rect class="box store" x="684" y="180" width="204" height="82"/>
+  <text class="boxText" x="704" y="210">SQLite Mirror</text>
+  <text class="boxSub" x="704" y="232">data/contracts.db</text>
+  <text class="boxSub" x="704" y="248">structured opportunities</text>
+
+  <rect class="box store" x="684" y="376" width="204" height="82"/>
+  <text class="boxText" x="704" y="406">Elasticsearch</text>
+  <text class="boxSub" x="704" y="428">stormwind_documents_v1</text>
+  <text class="boxSub" x="704" y="444">searchable evidence chunks</text>
+
+  <rect class="lane" x="966" y="116" width="278" height="450" filter="url(#shadow)"/>
+  <text class="laneTitle" x="990" y="150">AI + Research Output</text>
+
+  <rect class="box ai" x="990" y="190" width="230" height="86"/>
+  <text class="boxText" x="1008" y="218">MCP Server</text>
+  <text class="boxSub" x="1008" y="240">technical-contract-research</text>
+  <text class="boxSub" x="1008" y="258">controlled tool surface</text>
+
+  <rect class="box ai" x="990" y="326" width="230" height="86"/>
+  <text class="boxText" x="1008" y="354">Codex / Claude</text>
+  <text class="boxSub" x="1008" y="376">search opportunities</text>
+  <text class="boxSub" x="1008" y="394">retrieve document evidence</text>
+
+  <rect class="box out" x="990" y="462" width="230" height="82"/>
+  <text class="boxText" x="1008" y="492">Research Decision</text>
+  <text class="boxSub" x="1008" y="514">assess now</text>
+  <text class="boxSub" x="1090" y="514">monitor / reject</text>
+
+  <rect class="lane" x="330" y="610" width="914" height="104" filter="url(#shadow)"/>
+  <text class="laneTitle" x="354" y="642">Research Guidance</text>
+
+  <rect class="box guide" x="354" y="660" width="232" height="38"/>
+  <text class="boxSub" x="372" y="684">TECHNICAL_SERVICES_PROFILE.md</text>
+
+  <rect class="box guide" x="622" y="660" width="170" height="38"/>
+  <text class="boxSub" x="646" y="684">prompts/*.md</text>
+
+  <rect class="box guide" x="828" y="660" width="174" height="38"/>
+  <text class="boxSub" x="852" y="684">adapters/skills/*</text>
+
+  <rect class="box guide" x="1038" y="660" width="182" height="38"/>
+  <text class="boxSub" x="1060" y="684">fit and exclusion rules</text>
+
+  <path class="arrow" d="M252 217 L354 217"/>
+  <text class="label" x="288" y="204">daily sync</text>
+
+  <path class="arrow" d="M580 217 L684 217"/>
+  <text class="label" x="616" y="204">load</text>
+
+  <path class="arrow" d="M684 244 C640 270 630 331 580 331"/>
+  <text class="label" x="606" y="296">query</text>
+
+  <path class="arrow" d="M252 331 L354 531"/>
+  <text class="label" x="268" y="432">live fallback</text>
+
+  <path class="arrow" d="M252 452 L354 445"/>
+  <text class="label" x="282" y="438">ingest</text>
+
+  <path class="arrow" d="M580 445 L684 417"/>
+  <text class="label" x="614" y="416">chunks</text>
+
+  <path class="arrow" d="M888 221 L990 232"/>
+  <text class="label" x="918" y="211">opps</text>
+
+  <path class="arrow" d="M888 417 L990 248"/>
+  <text class="label" x="914" y="350">evidence</text>
+
+  <path class="arrow" d="M1105 276 L1105 326"/>
+  <text class="label" x="1118" y="306">tools</text>
+
+  <path class="arrow" d="M1105 412 L1105 462"/>
+  <text class="label" x="1118" y="442">rank</text>
+
+  <path class="softArrow" d="M470 660 C520 600 870 600 1040 276"/>
+  <text class="label" x="670" y="604">profiles guide searches and rejection rules</text>
+
+  <path class="softArrow" d="M914 679 C1000 656 1090 560 1105 544"/>
+  <text class="small" x="1010" y="632">output is evidence-backed</text>
+</svg>
