@@ -21,6 +21,9 @@ data/*.csv
 data/last_sync.txt
 data/document-cache/
 
+# v2 generated digests
+data/digests/
+
 # Generated research exports
 *.xlsx
 *_Leads_*.csv

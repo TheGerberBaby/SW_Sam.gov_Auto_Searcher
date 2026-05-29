@@ -4,6 +4,8 @@ Local tools for finding, filtering, and researching public SAM.gov technical-ser
 
 This project keeps a fast local mirror of SAM.gov opportunity data, stores public solicitation documents in a searchable evidence index, and exposes the workflow to AI clients through a Dockerized MCP server.
 
+> **v2 update.** The toolkit now includes a deterministic lead-scoring engine, a watchlist + saved-search store, a daily digest report generator, and a zero-dependency local web dashboard. See [V2_FEATURES.md](V2_FEATURES.md). The v1 snapshot is preserved at `..\SW_Contracting_Bots_v1_backup\` and at git tag `v1.0`.
+
 ## System Schematic
 
 <p align="center">
@@ -18,6 +20,7 @@ This project keeps a fast local mirror of SAM.gov opportunity data, stores publi
 - Indexes public solicitation attachments, SOWs, PWS files, and amendments in Elasticsearch.
 - Gives Codex and Claude an MCP tool surface for structured opportunity search plus document evidence retrieval.
 - Keeps lead research focused on technical services: Elastic/OpenSearch, AI search and RAG, observability/SIEM, AI/data services, and VTC/network engineering.
+- **v2:** scores every candidate against the operator's rubric, tracks pursuits in a watchlist, generates ranked daily digest reports, and ships a local web dashboard.
 
 ## Quick Start
 
@@ -133,8 +136,31 @@ git status --short --ignored
 git check-ignore -v .env data\contracts.db data\ContractOpportunitiesFullCSV.csv
 ```
 
+## v2 Quick Start
+
+```powershell
+# Score the local mirror against the broad profile, last 30 days
+python scripts/scoring.py --profile technical_services --min-score 3 --days 30
+
+# Generate today's digest (markdown + HTML written to data/digests/)
+python scripts/digest.py --days 3 --min-score 3
+
+# Launch the local web dashboard
+python scripts/dashboard.py
+
+# Unified CLI dispatcher
+.\swcb.bat search "Elasticsearch"
+.\swcb.bat score --profile elastic_only --min-score 4
+.\swcb.bat digest
+.\swcb.bat watch list
+.\swcb.bat dashboard
+```
+
+Full v2 reference: [V2_FEATURES.md](V2_FEATURES.md).
+
 ## More Detail
 
+- [V2_FEATURES.md](V2_FEATURES.md) covers the v2 scoring engine, watchlist, daily digest, dashboard, and CLI.
 - [ARCHITECTURE.md](ARCHITECTURE.md) has the internal architecture notes.
 - [SOP.md](SOP.md) has daily operating recipes.
 - [DOCUMENT_INDEX.md](DOCUMENT_INDEX.md) explains Elasticsearch document ingest and retrieval.

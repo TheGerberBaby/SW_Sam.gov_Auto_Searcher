@@ -59,6 +59,28 @@ flowchart TD
 | SQLite mirror | Fast discovery from SAM.gov bulk opportunity records. |
 | Elasticsearch | Searchable evidence store for public solicitation documents. |
 | Profile/prompt files | Define the operator's technical capability lanes and research rules. |
+| **Scoring engine** (v2) | Deterministic, explainable lead scoring against the profile rubric. |
+| **Watchlist store** (v2) | Per-opportunity pursuit state, status history, saved searches, digest run log. |
+| **Digest generator** (v2) | Daily ranked markdown + HTML report by capability lane. |
+| **Local dashboard** (v2) | Zero-dependency web UI for search, score, watchlist, saved searches, digest. |
+| **Unified CLI** (v2) | `swcb <command>` dispatcher in front of every script. |
+
+## v2 Module Flow
+
+```mermaid
+flowchart LR
+    DB[("SQLite<br/>data/contracts.db")] --> SCORE["scoring.py<br/>tier-1/2 keywords + structural rules"]
+    SCORE --> DIGEST["digest.py<br/>ranked markdown + HTML report"]
+    SCORE --> DASH["dashboard.py<br/>local web UI (http.server)"]
+    SCORE --> MCP2["mcp_server.py v2 tools<br/>score_opportunities, generate_daily_digest, ..."]
+    DASH <--> WL[("watchlist.db<br/>watchlist + saved searches + digest runs")]
+    DIGEST --> WL
+    MCP2 <--> WL
+    CLI["swcb.py / swcb.bat<br/>unified dispatcher"] --> SCORE
+    CLI --> DIGEST
+    CLI --> DASH
+    CLI --> WL
+```
 
 ## Boundary Rules
 

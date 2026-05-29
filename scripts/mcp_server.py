@@ -23,6 +23,9 @@ from document_store import (
     command_ingest,
     command_search,
 )
+from scoring import available_profiles, bulk_score, score_opportunity
+from watchlist import Store as WatchlistStore, VALID_STATUSES
+from digest import generate_digest
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_DIR / "data" / "contracts.db"
@@ -255,6 +258,266 @@ def search_documents(
         return _captured_json(command_search, store, args)
     except DocumentStoreError as exc:
         raise ValueError(str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# v2 tools: scoring, watchlist, saved searches, daily digest
+# ---------------------------------------------------------------------------
+
+
+def _watchlist_store() -> WatchlistStore:
+    return WatchlistStore()
+
+
+@mcp.tool()
+def list_scoring_profiles() -> dict[str, Any]:
+    """List the available scoring-profile names."""
+    return {"profiles": available_profiles(), "valid_statuses": sorted(VALID_STATUSES)}
+
+
+@mcp.tool()
+def score_opportunities(
+    keyword: str = "",
+    naics: str = "",
+    state: str = "",
+    set_aside: str = "",
+    notice_type: str = "",
+    days: int = 30,
+    min_score: int = 2,
+    profile: str = "technical_services",
+    limit: int = 20,
+) -> dict[str, Any]:
+    """Search the local SAM mirror and return opportunities ranked by score.
+
+    Scoring is keyword + structural-rule based on the operator's profile and
+    is meant for triage. Every point of score is attributed to a reason.
+    """
+    if profile not in available_profiles():
+        raise ValueError(f"Unknown profile {profile!r}. Available: {available_profiles()}")
+    if not DB_PATH.exists():
+        raise ValueError("Local opportunity database is missing; run scripts/sync_bulk.py first.")
+    days = max(0, min(days, 3650))
+    limit = max(1, min(limit, 100))
+
+    where = ["active = 'Yes'"]
+    params: list[Any] = []
+    if keyword:
+        where.append("(title LIKE ? OR description LIKE ?)")
+        params.extend([f"%{keyword}%", f"%{keyword}%"])
+    if naics:
+        where.append("naics_code LIKE ?")
+        params.append(f"{naics}%")
+    if state:
+        where.append("UPPER(pop_state) = ?")
+        params.append(state.upper())
+    if set_aside:
+        where.append("UPPER(set_aside_code) = ?")
+        params.append(set_aside.upper())
+    if notice_type:
+        where.append("type LIKE ?")
+        params.append(f"%{notice_type}%")
+    if days > 0:
+        where.append("posted_date >= ?")
+        params.append((datetime.now(LOCAL_TIMEZONE).date() - timedelta(days=days)).isoformat())
+    sql = f"""
+        SELECT notice_id, title, sol_number, department, sub_tier, posted_date,
+               type, set_aside, set_aside_code, response_deadline, naics_code,
+               pop_city, pop_state, active, link, description
+          FROM opportunities
+         WHERE {' AND '.join(where)}
+         ORDER BY posted_date DESC
+         LIMIT ?
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = [dict(r) for r in conn.execute(sql, params + [max(limit * 5, 100)]).fetchall()]
+
+    scored = bulk_score(rows, profile=profile)
+    by_id = {r["notice_id"]: r for r in rows}
+    out = []
+    for result in scored:
+        if result.score < min_score:
+            continue
+        opp = by_id.get(result.notice_id, {})
+        out.append({
+            "notice_id": result.notice_id,
+            "title": result.title,
+            "score": result.score,
+            "band": result.band,
+            "lanes": result.lanes,
+            "reasons": [r.to_dict() for r in result.reasons],
+            "department": opp.get("department"),
+            "naics_code": opp.get("naics_code"),
+            "set_aside": opp.get("set_aside"),
+            "posted_date": opp.get("posted_date"),
+            "response_deadline": opp.get("response_deadline"),
+            "link": opp.get("link"),
+        })
+    out.sort(key=lambda x: x["score"], reverse=True)
+    return {
+        "as_of": datetime.now(LOCAL_TIMEZONE).isoformat(),
+        "profile": profile,
+        "shown": len(out[:limit]),
+        "results": out[:limit],
+    }
+
+
+@mcp.tool()
+def score_one_opportunity(
+    notice_id: str,
+    profile: str = "technical_services",
+) -> dict[str, Any]:
+    """Score a single notice already in the local mirror."""
+    if profile not in available_profiles():
+        raise ValueError(f"Unknown profile {profile!r}")
+    if not DB_PATH.exists():
+        raise ValueError("Local opportunity database is missing.")
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT * FROM opportunities WHERE notice_id = ?", (notice_id,)
+        ).fetchone()
+    if not row:
+        raise ValueError(f"notice {notice_id} not in local mirror")
+    result = score_opportunity(dict(row), profile=profile)
+    return result.to_dict()
+
+
+@mcp.tool()
+def generate_daily_digest(
+    profile: str = "technical_services",
+    days: int = 3,
+    min_score: int = 3,
+    write: bool = True,
+) -> dict[str, Any]:
+    """Generate a daily digest report. Returns scan counts and (optional) file paths."""
+    if profile not in available_profiles():
+        raise ValueError(f"Unknown profile {profile!r}")
+    result = generate_digest(profile=profile, days=days, min_score=min_score, write=write)
+    return {
+        "generated_at": result["generated_at"],
+        "profile": result["profile"],
+        "scanned": result["scanned"],
+        "shown": result["shown"],
+        "markdown_path": result["markdown_path"],
+        "html_path": result["html_path"],
+        "results": result["results"],
+    }
+
+
+@mcp.tool()
+def add_to_watchlist(
+    notice_id: str,
+    title: str = "",
+    status: str = "tracking",
+    notes: str = "",
+    score: int = 0,
+    band: str = "",
+) -> dict[str, Any]:
+    """Add a SAM notice to the local watchlist."""
+    if status not in VALID_STATUSES:
+        raise ValueError(f"Invalid status {status!r}. Valid: {sorted(VALID_STATUSES)}")
+
+    opportunity: dict[str, Any] = {"notice_id": notice_id, "title": title}
+    if DB_PATH.exists() and not title:
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                "SELECT notice_id, title, sol_number, department, naics_code, set_aside, response_deadline, link FROM opportunities WHERE notice_id = ?",
+                (notice_id,),
+            ).fetchone()
+        if row:
+            opportunity = dict(row)
+
+    entry = _watchlist_store().add_to_watchlist(
+        opportunity,
+        status=status,
+        notes=notes or None,
+        score=score or None,
+        band=band or None,
+    )
+    return entry.to_dict()
+
+
+@mcp.tool()
+def list_watchlist(status: str = "", limit: int = 100) -> dict[str, Any]:
+    """List entries in the local watchlist."""
+    entries = _watchlist_store().list_watchlist(status=status or None, limit=limit)
+    return {"count": len(entries), "entries": [e.to_dict() for e in entries]}
+
+
+@mcp.tool()
+def update_watchlist_status(notice_id: str, status: str, note: str = "") -> dict[str, Any]:
+    """Update the status of a watchlist entry."""
+    if status not in VALID_STATUSES:
+        raise ValueError(f"Invalid status {status!r}")
+    entry = _watchlist_store().update_status(notice_id, status, note=note or None)
+    if not entry:
+        raise ValueError(f"No watchlist entry with notice_id {notice_id}")
+    return entry.to_dict()
+
+
+@mcp.tool()
+def add_watchlist_note(notice_id: str, text: str) -> dict[str, Any]:
+    """Append a dated note to a watchlist entry."""
+    _watchlist_store().add_note(notice_id, text)
+    return {"ok": True}
+
+
+@mcp.tool()
+def save_search(
+    name: str,
+    keyword: str = "",
+    naics: str = "",
+    state: str = "",
+    set_aside: str = "",
+    notice_type: str = "",
+    days: int = 30,
+    profile: str = "technical_services",
+    min_score: int = 2,
+    description: str = "",
+) -> dict[str, Any]:
+    """Save a named search-filter set for later replay."""
+    filters = {
+        k: v for k, v in {
+            "keyword": keyword, "naics": naics, "state": state,
+            "set_aside": set_aside, "notice_type": notice_type, "days": days,
+        }.items() if v
+    }
+    saved = _watchlist_store().save_search(
+        name=name, filters=filters,
+        description=description or None,
+        profile=profile, min_score=min_score,
+    )
+    return saved.to_dict()
+
+
+@mcp.tool()
+def list_saved_searches() -> dict[str, Any]:
+    """List all saved searches."""
+    searches = _watchlist_store().list_saved_searches()
+    return {"count": len(searches), "searches": [s.to_dict() for s in searches]}
+
+
+@mcp.tool()
+def run_saved_search(name: str, limit: int = 20) -> dict[str, Any]:
+    """Replay a saved search through the scoring engine."""
+    saved = _watchlist_store().get_saved_search(name)
+    if not saved:
+        raise ValueError(f"No saved search named {name!r}")
+    _watchlist_store().mark_search_run(name)
+    filters = saved.filters
+    return score_opportunities(
+        keyword=filters.get("keyword", ""),
+        naics=filters.get("naics", ""),
+        state=filters.get("state", ""),
+        set_aside=filters.get("set_aside", ""),
+        notice_type=filters.get("notice_type", ""),
+        days=int(filters.get("days", 30)),
+        min_score=saved.min_score,
+        profile=saved.profile,
+        limit=limit,
+    )
 
 
 if __name__ == "__main__":
