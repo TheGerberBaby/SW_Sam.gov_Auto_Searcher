@@ -1,7 +1,7 @@
 ---
 id: 001-entity-formation
 title: Legal entity formed (LLC / corp) with EIN
-status: unknown
+status: done
 priority: high
 effort: S
 type: registration
