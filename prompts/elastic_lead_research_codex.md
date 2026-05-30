@@ -10,7 +10,7 @@ search-platform engineering.
 
 Rules:
 
-- Read `ELASTIC_LEAD_PROFILE.md`, `DOCUMENT_INDEX.md`, and relevant scripts
+- Read `criteria/ELASTIC_LEAD_PROFILE.md`, `DOCUMENT_INDEX.md`, and relevant scripts
   before researching.
 - Prefer MCP tools `search_opportunities`, `ingest_public_document`, and
   `search_documents`; validate promising leads with current official public

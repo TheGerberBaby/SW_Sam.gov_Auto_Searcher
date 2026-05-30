@@ -30,8 +30,8 @@ from digest import generate_digest
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_DIR / "data" / "contracts.db"
 META_PATH = PROJECT_DIR / "data" / "last_sync.txt"
-PROFILE_PATH = PROJECT_DIR / "TECHNICAL_SERVICES_PROFILE.md"
-ELASTIC_PROFILE_PATH = PROJECT_DIR / "ELASTIC_LEAD_PROFILE.md"
+PROFILE_PATH = PROJECT_DIR / "criteria" / "TECHNICAL_SERVICES_PROFILE.md"
+ELASTIC_PROFILE_PATH = PROJECT_DIR / "criteria" / "ELASTIC_LEAD_PROFILE.md"
 PROMPT_PATH = PROJECT_DIR / "prompts" / "technical_services_lead_research.md"
 USER_TIMEZONE = os.getenv("USER_TIMEZONE", "America/New_York")
 LOCAL_TIMEZONE = ZoneInfo(USER_TIMEZONE)

@@ -36,7 +36,8 @@ COMMANDS = {
     "live":      ("find_contracts.py", "Live SAM.gov API lookup"),
     "score":     ("scoring.py",        "Score candidates against the technical-services rubric"),
     "digest":    ("digest.py",         "Generate a daily digest report"),
-    "watch":     ("watchlist.py",      "Manage the watchlist + saved searches"),
+    "watch":     ("watchlist.py",      "Manage the opportunity watchlist + saved searches"),
+    "tasks":     ("tasks_lib.py",      "Manage the business-task spine (tasks/ directory)"),
     "dashboard": ("dashboard.py",      "Launch the local web dashboard"),
     "docs":      ("document_store.py", "Document index status / ingest / search"),
 }

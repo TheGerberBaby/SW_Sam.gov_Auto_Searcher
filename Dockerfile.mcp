@@ -9,7 +9,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY scripts ./scripts
-COPY ELASTIC_LEAD_PROFILE.md TECHNICAL_SERVICES_PROFILE.md DOCUMENT_INDEX.md ./
+COPY criteria ./criteria
+COPY DOCUMENT_INDEX.md ./
 COPY prompts ./prompts
 
 CMD ["python", "scripts/mcp_server.py"]

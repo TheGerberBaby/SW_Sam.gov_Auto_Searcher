@@ -2,7 +2,7 @@
 
 Scores a single opportunity (a dict matching the columns produced by
 `sync_bulk.py`) against the operator's technical-services rubric defined in
-`TECHNICAL_SERVICES_PROFILE.md` and `ELASTIC_LEAD_PROFILE.md`.
+`criteria/TECHNICAL_SERVICES_PROFILE.md` and `criteria/ELASTIC_LEAD_PROFILE.md`.
 
 The scorer is keyword + structural-rule based on purpose: it must be
 explainable, fast, and never silently invent a fit. Every point of score is

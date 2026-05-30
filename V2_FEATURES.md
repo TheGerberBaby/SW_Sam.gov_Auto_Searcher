@@ -14,7 +14,7 @@ and the git tag `v1.0` points at the last v1 commit.
 
 ## 1. Scoring engine — `scripts/scoring.py`
 
-Translates the `TECHNICAL_SERVICES_PROFILE.md` and `ELASTIC_LEAD_PROFILE.md`
+Translates the `criteria/TECHNICAL_SERVICES_PROFILE.md` and `criteria/ELASTIC_LEAD_PROFILE.md`
 rubrics into a deterministic, explainable scorer. Each opportunity gets:
 
 - a numeric **score**

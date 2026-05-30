@@ -8,11 +8,11 @@ description: "Find and evaluate public federal opportunities aligned to the oper
 Use this skill for broad federal technical-services opportunity research.
 the operator's canonical fit and exclusion rules are in:
 
-`<PROJECT_DIR>\TECHNICAL_SERVICES_PROFILE.md`
+`<PROJECT_DIR>\criteria\TECHNICAL_SERVICES_PROFILE.md`
 
 ## Workflow
 
-1. Read `TECHNICAL_SERVICES_PROFILE.md`.
+1. Read `criteria/TECHNICAL_SERVICES_PROFILE.md`.
 2. Prefer MCP tools from `technical_contract_research` when available:
    `get_technical_services_profile`, `search_opportunities`,
    `document_index_status`, `ingest_public_document`, and `search_documents`.

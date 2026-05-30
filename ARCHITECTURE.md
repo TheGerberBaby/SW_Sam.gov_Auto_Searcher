@@ -10,7 +10,7 @@ flowchart LR
     C -->|stdio: docker compose run mcp| M["technical-contract-research MCP<br/>Docker one-shot server"]
     D -->|stdio: docker compose run mcp| M
 
-    M --> P["TECHNICAL_SERVICES_PROFILE.md<br/>broad fit rules + scoring"]
+    M --> P["criteria/TECHNICAL_SERVICES_PROFILE.md<br/>broad fit rules + scoring"]
     M --> Q["Prompt library<br/>technical_services_lead_research.md"]
 
     M --> O["search_opportunities"]

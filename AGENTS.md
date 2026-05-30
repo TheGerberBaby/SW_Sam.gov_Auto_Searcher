@@ -1,22 +1,33 @@
 # Agent Instructions
 
+> Before doing anything else, read `PROFILE.md` and skim `tasks/`. The
+> business spine lives in those files; everything below is supporting
+> detail.
+
 ## User Fit
 
 the operator is a technical-services engineer. For contract-lead work in this
 repository, the default capability profile is defined in
-`TECHNICAL_SERVICES_PROFILE.md`. It includes Elastic/OpenSearch, AI search and
+`criteria/TECHNICAL_SERVICES_PROFILE.md`. It includes Elastic/OpenSearch, AI search and
 RAG, observability/security analytics, AI/data services, and VTC/network
-engineering. `ELASTIC_LEAD_PROFILE.md` is the narrower Elastic-only lane.
+engineering. `criteria/ELASTIC_LEAD_PROFILE.md` is the narrower Elastic-only lane.
 
 Do not default to construction or specialty-trade opportunities. The
-construction material in `SAM_Lead_Selection_Logic.md` and any previously
+construction material in `criteria/SAM_Lead_Selection_Logic.md` and any previously
 indexed construction attachment are historical/test artifacts unless the operator
 explicitly requests construction research.
 
+## Roadmap Review
+
+When asked "what should I work on next?", apply the policy in
+`ROADMAP_REVIEW.md` against `tasks/`. Never spend two consecutive
+cycles on a blocked workstream.
+
 ## Research Rules
 
-- Start with `TECHNICAL_SERVICES_PROFILE.md`, `DOCUMENT_INDEX.md`, and the relevant
-  script documentation before conducting a lead search.
+- Start with `PROFILE.md`, `criteria/TECHNICAL_SERVICES_PROFILE.md`,
+  `DOCUMENT_INDEX.md`, and the relevant script documentation before
+  conducting a lead search.
 - Prefer the `technical_contract_research` MCP tools when available:
   `search_opportunities`, `document_index_status`, `ingest_public_document`,
   and `search_documents`.

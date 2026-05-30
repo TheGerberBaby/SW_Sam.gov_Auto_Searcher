@@ -17,12 +17,12 @@ Project root:
 
 Before ranking opportunities, read:
 
-- `ELASTIC_LEAD_PROFILE.md` for fit, exclusions, terms, and scoring.
+- `criteria/ELASTIC_LEAD_PROFILE.md` for fit, exclusions, terms, and scoring.
 - `DOCUMENT_INDEX.md` when a public solicitation attachment is available.
 - `scripts/search_bulk.py` or its usage output before running structured
   discovery if flags are unclear.
 
-The construction values in `SAM_Lead_Selection_Logic.md` are historical
+The construction values in `criteria/SAM_Lead_Selection_Logic.md` are historical
 examples, not active defaults.
 
 ## Discovery
@@ -34,7 +34,7 @@ SQLite mirror through `scripts/search_bulk.py`.
 
 Search individually for terms such as `Elasticsearch`, `Elastic Stack`,
 `Kibana`, `OpenSearch`, `observability`, `log analytics`, `SIEM`, and `search
-platform`, then use the relevant NAICS hints from `ELASTIC_LEAD_PROFILE.md` to
+platform`, then use the relevant NAICS hints from `criteria/ELASTIC_LEAD_PROFILE.md` to
 broaden discovery. Direct-script fallback:
 
 ```powershell
