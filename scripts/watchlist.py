@@ -98,7 +98,8 @@ CREATE TABLE IF NOT EXISTS digest_runs (
     candidates_scanned INTEGER NOT NULL,
     candidates_shown   INTEGER NOT NULL,
     report_path     TEXT,
-    summary         TEXT
+    summary         TEXT,
+    items_json      TEXT
 );
 """
 
@@ -214,6 +215,13 @@ class Store:
         cols = {row["name"] for row in conn.execute("PRAGMA table_info(watchlist)").fetchall()}
         if "human_score" not in cols:
             conn.execute("ALTER TABLE watchlist ADD COLUMN human_score INTEGER")
+        digest_table = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'digest_runs'"
+        ).fetchall()
+        if digest_table:
+            dcols = {row["name"] for row in conn.execute("PRAGMA table_info(digest_runs)").fetchall()}
+            if "items_json" not in dcols:
+                conn.execute("ALTER TABLE digest_runs ADD COLUMN items_json TEXT")
 
     @contextmanager
     def _conn(self) -> Iterator[sqlite3.Connection]:
@@ -448,24 +456,33 @@ class Store:
         candidates_shown: int,
         report_path: str | None = None,
         summary: str | None = None,
+        items_json: str | None = None,
     ) -> int:
         with self._conn() as conn:
             cur = conn.execute(
                 """
                 INSERT INTO digest_runs
-                    (run_at, profile, candidates_scanned, candidates_shown, report_path, summary)
-                VALUES (?, ?, ?, ?, ?, ?)
+                    (run_at, profile, candidates_scanned, candidates_shown, report_path, summary, items_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (_now(), profile, candidates_scanned, candidates_shown, report_path, summary),
+                (_now(), profile, candidates_scanned, candidates_shown, report_path, summary, items_json),
             )
             return cur.lastrowid
 
     def list_digest_runs(self, limit: int = 20) -> list[dict[str, Any]]:
         with self._conn() as conn:
             rows = conn.execute(
-                "SELECT * FROM digest_runs ORDER BY id DESC LIMIT ?", (limit,)
+                "SELECT id, run_at, profile, candidates_scanned, candidates_shown, "
+                "report_path, summary FROM digest_runs ORDER BY id DESC LIMIT ?", (limit,)
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def get_digest_run(self, run_id: int) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM digest_runs WHERE id = ?", (run_id,)
+            ).fetchone()
+        return dict(row) if row else None
 
 
 # ---------------------------------------------------------------------------

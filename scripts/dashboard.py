@@ -276,6 +276,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._send_json([e.to_dict() for e in entries])
             elif parsed.path == "/api/digests":
                 self._send_json(_store().list_digest_runs(limit=int(params.get("limit") or 20)))
+            elif parsed.path == "/api/digest/items":
+                run = _store().get_digest_run(int(params.get("id") or 0))
+                if not run:
+                    self._send_json({"error": "not found"}, status=404)
+                    return
+                try:
+                    items = json.loads(run.get("items_json") or "[]")
+                except (json.JSONDecodeError, TypeError):
+                    items = []
+                self._send_json({
+                    "id": run["id"],
+                    "profile": run.get("profile"),
+                    "run_at": run.get("run_at"),
+                    "summary": run.get("summary"),
+                    "has_report": bool(run.get("report_path")),
+                    "items": items,
+                })
             elif parsed.path == "/api/digest/report":
                 run_id = int(params.get("id") or 0)
                 run = next((r for r in _store().list_digest_runs(limit=200) if int(r["id"]) == run_id), None)
@@ -2729,6 +2746,28 @@ html[data-theme="light"] .starter-main{background:#ffffff;}
 .starter-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.85rem;}
 .starter-preview{margin-top:.85rem;max-height:300px;overflow:auto;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:11px;padding:.85rem 1rem;font-size:.8rem;line-height:1.5;white-space:pre-wrap;color:var(--ink-2);font-family:ui-monospace,Consolas,monospace;}
 html[data-theme="light"] .starter-preview{background:#f1f3fb;}
+
+/* ---- past scans centerpiece ---- */
+.scans{max-width:1320px;margin:1.3rem auto 0;padding:0 clamp(.9rem,3vw,2rem);}
+.scans-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;margin-bottom:.9rem;}
+.scans-head h3{margin:0;font-size:1.45rem;font-weight:850;}
+.scans-sub{margin:.28rem 0 0;color:var(--mute);font-size:.9rem;max-width:66ch;}
+.scans-actions{display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;}
+.scans-actions .mini{display:flex;flex-direction:column;gap:.22rem;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);}
+.scans-actions .mini select{min-height:42px;width:auto;}
+.scan-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem;}
+.scan-card{background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:15px;padding:1rem 1.05rem;cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s;}
+.scan-card:hover{transform:translateY(-2px);border-color:var(--primary);box-shadow:var(--shadow-md);}
+.scan-card-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.45rem;}
+.scan-card .title{margin:.15rem 0 .35rem;font-size:1.02rem;}
+.stars{display:flex;align-items:center;gap:.12rem;margin-top:.6rem;}
+.star{font-size:1.3rem;line-height:1;color:var(--line-strong);cursor:pointer;transition:color .12s,transform .12s;}
+.star:hover{transform:scale(1.18);}
+.star.on{color:#fbbf24;text-shadow:0 0 10px rgba(251,191,36,.55);}
+.star-clear{margin-left:.55rem;font-size:.72rem;font-weight:700;color:var(--mute);cursor:pointer;}
+.star-clear:hover{color:var(--ink);}
+.scan-detail{margin-bottom:1.1rem;background:var(--glass);backdrop-filter:blur(16px) saturate(130%);border:1px solid var(--line-strong);border-radius:16px;padding:1rem 1.15rem;box-shadow:var(--shadow-md);}
+.scan-detail-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.5rem;font-size:.95rem;}
 </style>
 </head>
 <body>
@@ -2770,10 +2809,28 @@ html[data-theme="light"] .starter-preview{background:#f1f3fb;}
   </div>
 </div>
 
+<section class="scans" id="scansSection">
+  <div class="scans-head">
+    <div>
+      <h3>Past scans</h3>
+      <p class="scans-sub">Each scan is what Claude / Codex pulled for your criteria. Open one, rate it 0–5, and send the leads you like to Pursuits.</p>
+    </div>
+    <div class="scans-actions">
+      <select id="d-profile" style="display:none"><option value="technical_services">technical_services</option></select>
+      <label class="mini">Range<select id="d-days"><option value="30" selected>Practical</option><option value="14">Wider</option><option value="7">Fresh</option><option value="3">Very fresh</option></select></label>
+      <label class="mini">Fit<select id="d-min_score"><option value="2" selected>Maybes +</option><option value="3">Good +</option><option value="5">Strong</option></select></label>
+      <button class="primary" onclick="runDigest()">＋ Run a scan</button>
+      <button class="ghost" onclick="loadDigests()">Refresh</button>
+    </div>
+  </div>
+  <div id="scanRunStatus"></div>
+  <div id="scanDetail" class="scan-detail" style="display:none"></div>
+  <div id="scanGallery" class="scan-gallery"></div>
+</section>
+
 <div class="layout">
   <aside class="tree" id="tree">
     <div class="tree-head"><span>System tree</span><button type="button" onclick="expandAll()">Expand all</button></div>
-    <div class="tree-item" data-node="digest" onclick="openNode('digest')"><span class="tree-ic">🔍</span><span class="tree-lbl">Today's Leads</span></div>
     <div class="tree-item" data-node="search" onclick="openNode('search')"><span class="tree-ic">🧭</span><span class="tree-lbl">Find Leads</span></div>
     <div class="tree-item" data-node="watchlist" onclick="openNode('watchlist')"><span class="tree-ic">📌</span><span class="tree-lbl">Pursuits</span><span class="tree-count" id="tc-watchlist">0</span></div>
     <div class="tree-item" data-node="tasks" onclick="openNode('tasks')"><span class="tree-ic">✅</span><span class="tree-lbl">Business Setup</span><span class="tree-count" id="tc-tasks">0</span></div>
@@ -2782,34 +2839,10 @@ html[data-theme="light"] .starter-preview{background:#f1f3fb;}
   </aside>
 
   <main class="stack">
-    <!-- TODAY'S LEADS -->
-    <section class="node open" id="node-digest">
-      <button class="node-head" type="button" onclick="toggleNode('digest')">
-        <span class="node-idx">01</span><span class="node-icon">🔍</span>
-        <span class="node-title"><b>Today's Leads</b><span class="node-sub">Run a profile-based scan and see solo / light-help / team reads.</span></span>
-        <span class="node-chevron">⌄</span>
-      </button>
-      <div class="node-body"><div class="node-inner"><div class="node-pad">
-        <select id="d-profile" style="display:none"><option value="technical_services">technical_services</option></select>
-        <div class="scan-options">
-          <label>Scan range
-            <select id="d-days"><option value="30" selected>Practical pool</option><option value="14">Wider recent pool</option><option value="7">Fresh only</option><option value="3">Very fresh only</option></select>
-          </label>
-          <label>Fit threshold
-            <select id="d-min_score"><option value="2" selected>Show maybes</option><option value="3">Good fit and up</option><option value="5">Strong only</option></select>
-          </label>
-        </div>
-        <div class="actions" style="margin-top:.8rem"><button class="primary" onclick="runDigest()">Scan now</button><button class="ghost" onclick="loadDigests()">Refresh past scans</button></div>
-        <div id="digestStatus"></div>
-        <div class="meta-row" style="margin-top:1rem;font-weight:700">Past scans</div>
-        <div id="digestTable"></div>
-      </div></div></div>
-    </section>
-
     <!-- SEARCH -->
-    <section class="node" id="node-search">
+    <section class="node open" id="node-search">
       <button class="node-head" type="button" onclick="toggleNode('search')">
-        <span class="node-idx">02</span><span class="node-icon">🧭</span>
+        <span class="node-idx">01</span><span class="node-icon">🧭</span>
         <span class="node-title"><b>Find Leads</b><span class="node-sub">Search the local SAM mirror by keyword, agency, place, set-aside.</span></span>
         <span class="node-chevron">⌄</span>
       </button>
@@ -2834,7 +2867,7 @@ html[data-theme="light"] .starter-preview{background:#f1f3fb;}
     <!-- WATCHLIST -->
     <section class="node" id="node-watchlist">
       <button class="node-head" type="button" onclick="toggleNode('watchlist')">
-        <span class="node-idx">03</span><span class="node-icon">📌</span>
+        <span class="node-idx">02</span><span class="node-icon">📌</span>
         <span class="node-title"><b>Pursuits</b><span class="node-sub">Your working list — move leads through stages, rate your own fit.</span></span>
         <span class="node-badge" id="badge-watchlist">0</span>
         <span class="node-chevron">⌄</span>
@@ -2852,7 +2885,7 @@ html[data-theme="light"] .starter-preview{background:#f1f3fb;}
     <!-- TASKS -->
     <section class="node" id="node-tasks">
       <button class="node-head" type="button" onclick="toggleNode('tasks')">
-        <span class="node-idx">04</span><span class="node-icon">✅</span>
+        <span class="node-idx">03</span><span class="node-icon">✅</span>
         <span class="node-title"><b>Business Setup</b><span class="node-sub">Stormwind operating tasks — formation, SAM, VetCert, eVA, first bid.</span></span>
         <span class="node-badge" id="badge-tasks">0</span>
         <span class="node-chevron">⌄</span>
@@ -2867,7 +2900,7 @@ html[data-theme="light"] .starter-preview{background:#f1f3fb;}
     <!-- SAVED -->
     <section class="node" id="node-saved">
       <button class="node-head" type="button" onclick="toggleNode('saved')">
-        <span class="node-idx">05</span><span class="node-icon">📚</span>
+        <span class="node-idx">04</span><span class="node-icon">📚</span>
         <span class="node-title"><b>Prompt Library</b><span class="node-sub">Reusable research prompts and saved filter searches.</span></span>
         <span class="node-chevron">⌄</span>
       </button>
@@ -2885,7 +2918,7 @@ html[data-theme="light"] .starter-preview{background:#f1f3fb;}
     <!-- PROFILE -->
     <section class="node" id="node-profile">
       <button class="node-head" type="button" onclick="toggleNode('profile')">
-        <span class="node-idx">06</span><span class="node-icon">📄</span>
+        <span class="node-idx">05</span><span class="node-icon">📄</span>
         <span class="node-title"><b>Profile &amp; Rules</b><span class="node-sub">Who Stormwind is, what fits, what to exclude — read by your AI.</span></span>
         <span class="node-badge" id="badge-profile">0</span>
         <span class="node-chevron">⌄</span>
@@ -3096,15 +3129,25 @@ function runSaved(s){if(s.filters&&s.filters.prompt_text){copyText(s.filters.pro
 async function deleteSaved(name){if(!confirm('Delete saved search '+name+'?'))return;await api('/api/saved-searches/delete',{method:'POST',body:{name}});showToast('Deleted');loadSavedSearches();}
 
 /* ---- digest ---- */
-async function runDigest(){const status=document.getElementById('digestStatus');status.innerHTML='<span class="spinner"></span>running the scan…';
+async function runDigest(){const status=document.getElementById('scanRunStatus');if(status)status.innerHTML='<span class="spinner"></span>running the scan…';
   try{const data=await api('/api/digest/run',{method:'POST',body:{profile:document.getElementById('d-profile').value,days:parseInt(document.getElementById('d-days').value,10),min_score:parseInt(document.getElementById('d-min_score').value,10)}});
-    const lanes=barChart('Leads by lane',Object.entries(data.lane_counts||{}).map(([l,v])=>({label:l,value:v})));
-    status.innerHTML=`<div class="card"><div class="title">Lead scan complete</div><div class="meta-row">${esc(data.summary||'')}</div><div class="meta-row">Checked <b>${data.scanned}</b> notices and found <b>${data.shown}</b> leads over the fit threshold.</div>${lanes}</div><div style="margin-top:1rem">${(data.items||[]).length?data.items.slice(0,25).map(cardHtml).join(''):'<div class="empty">No leads met this threshold. Try "Show maybes" or a wider range.</div>'}</div>`;
-    loadDigests();refreshOverview();}
-  catch(e){status.innerHTML=`<span style="color:var(--bad)">${esc(e.message)}</span>`;}}
-async function loadDigests(){const data=await api('/api/digests');const t=document.getElementById('digestTable');
-  if(!data.length){t.innerHTML='<div class="empty">No past scans yet. Run Scan now.</div>';return;}
-  t.innerHTML=`<div class="past-scan-grid">${data.map(d=>`<article class="card past-scan" onclick="openPastScan(${d.id})"><div class="card-top"><span class="badge promising">${d.candidates_shown} leads</span><span class="due-pill">${esc(shortDateTime(d.run_at))}</span></div><div class="title">${esc(profileLabel(d.profile))}</div><div class="meta-row">${esc(d.summary||`${d.candidates_shown} leads from ${d.candidates_scanned} checked`)}</div><div class="card-actions"><button class="ghost" onclick="event.stopPropagation(); openPastScan(${d.id})">Open scan</button></div></article>`).join('')}</div>`;}
+    if(status)status.innerHTML=`<div class="card"><div class="title">Scan complete — ${data.shown} leads from ${data.scanned} notices</div><div class="meta-row">${esc(data.summary||'')}</div></div>`;
+    loadDigests();refreshOverview();
+    if(status)setTimeout(()=>{status.innerHTML='';},5000);}
+  catch(e){if(status)status.innerHTML=`<span style="color:var(--bad)">${esc(e.message)}</span>`;}}
+function scanRating(id){return parseInt(localStorage.getItem('swcb-scan-rating-'+id)||'0',10);}
+function starInner(id,rating){let s='';for(let i=1;i<=5;i++){s+=`<span class="star ${i<=rating?'on':''}" title="${i} / 5" onclick="event.stopPropagation();rateScan(${id},${i})">★</span>`;}s+=`<span class="star-clear" onclick="event.stopPropagation();rateScan(${id},0)">clear</span>`;return s;}
+function rateScan(id,n){if(scanRating(id)===n)n=0;localStorage.setItem('swcb-scan-rating-'+id,String(n));const h=document.querySelector('.scan-card[data-id="'+id+'"] .stars');if(h)h.innerHTML=starInner(id,n);}
+async function loadDigests(){const g=document.getElementById('scanGallery');if(!g)return;const data=await api('/api/digests');
+  if(!data.length){g.innerHTML='<div class="empty">No scans yet. Click “Run a scan” above, or ask Claude / Codex to run one for your criteria — it shows up here.</div>';return;}
+  g.innerHTML=data.map(d=>`<article class="scan-card" data-id="${d.id}" onclick="openScan(${d.id})"><div class="scan-card-top"><span class="badge promising">${d.candidates_shown} leads</span><span class="due-pill">${esc(shortDateTime(d.run_at))}</span></div><div class="title">${esc(profileLabel(d.profile))}</div><div class="meta-row">${esc(d.summary||`${d.candidates_shown} of ${d.candidates_scanned} notices`)}</div><div class="stars">${starInner(d.id,scanRating(d.id))}</div></article>`).join('');}
+async function openScan(id){const detail=document.getElementById('scanDetail');if(!detail)return;detail.style.display='';detail.innerHTML='<div class="card"><span class="spinner"></span>loading scan…</div>';detail.scrollIntoView({behavior:'smooth',block:'start'});
+  try{const d=await api('/api/digest/items?id='+encodeURIComponent(id));
+    const head=`<div class="scan-detail-head"><div><b>${esc(profileLabel(d.profile))}</b> · ${esc(shortDateTime(d.run_at))} · ${d.items.length} leads</div><button class="ghost" onclick="closeScan()">✕ close</button></div>`;
+    if(!d.items.length){detail.innerHTML=head+`<div class="empty">This scan didn't store its leads.${d.has_report?' <a class="row-link" target="_blank" href="/api/digest/report?id='+id+'">Open the report</a> instead.':''}</div>`;return;}
+    detail.innerHTML=head+'<div class="meta-row" style="margin:.2rem 0 .7rem">Tap <b>+ Watchlist</b> on a lead to send it to Pursuits.</div>'+d.items.map(cardHtml).join('');}
+  catch(e){detail.innerHTML=`<div class="card" style="color:var(--bad)">${esc(e.message)}</div>`;}}
+function closeScan(){const d=document.getElementById('scanDetail');if(d){d.style.display='none';d.innerHTML='';}}
 function shortDateTime(v){if(!v)return '-';return String(v).replace('T',' ').slice(0,16);}
 function openPastScan(id){window.open('/api/digest/report?id='+encodeURIComponent(id),'_blank','noopener');}
 
@@ -3133,7 +3176,7 @@ async function init(){
   const dz=document.getElementById('promptDropZone');const fi=document.getElementById('promptFileInput');
   if(fi)fi.addEventListener('change',ev=>savePromptFiles(ev.target.files));
   if(dz){['dragenter','dragover'].forEach(n=>dz.addEventListener(n,ev=>{ev.preventDefault();dz.style.borderColor='var(--primary)';}));['dragleave','drop'].forEach(n=>dz.addEventListener(n,ev=>{ev.preventDefault();dz.style.borderColor='';}));dz.addEventListener('drop',ev=>savePromptFiles(ev.dataTransfer.files));}
-  document.querySelector('.tree-item[data-node="digest"]').classList.add('active');
+  const firstItem=document.querySelector('.tree-item[data-node="search"]');if(firstItem)firstItem.classList.add('active');
   loadDigests();
   try{const meta=await api('/api/profiles');STATE.profiles=meta.profiles;STATE.statuses=meta.statuses;STATE.env=meta.env||'prod';
     ['f-profile','d-profile'].forEach(id=>{const sel=document.getElementById(id);sel.innerHTML=STATE.profiles.map(p=>`<option value="${p}">${profileLabel(p)}</option>`).join('');if(STATE.profiles.includes('technical_services'))sel.value='technical_services';});

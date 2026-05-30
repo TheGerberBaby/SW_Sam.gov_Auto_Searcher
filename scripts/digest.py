@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import sqlite3
 import sys
 from collections import defaultdict
@@ -341,6 +342,8 @@ def generate_digest(
 
     md_path: Path | None = None
     html_path: Path | None = None
+    items = _digest_items(scored, opportunities)
+
     if write:
         reports_dir.mkdir(parents=True, exist_ok=True)
         stamp = generated_at.strftime("%Y%m%d_%H%M%S")
@@ -357,6 +360,7 @@ def generate_digest(
                 candidates_shown=len(scored),
                 report_path=str(html_path),
                 summary=f"{len(scored)} leads matched the fit threshold from {len(rows)} notices checked.",
+                items_json=json.dumps(items),
             )
         except Exception as exc:  # noqa: BLE001
             print(f"WARN: failed to record digest run: {exc}", file=sys.stderr)
@@ -374,7 +378,7 @@ def generate_digest(
         "markdown_path": str(md_path) if md_path else None,
         "html_path": str(html_path) if html_path else None,
         "results": [s.to_dict() for s in scored],
-        "items": _digest_items(scored, opportunities),
+        "items": items,
     }
 
 
