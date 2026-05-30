@@ -255,7 +255,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
         try:
             if parsed.path == "/" or parsed.path == "/index.html":
-                self._send_html(_render_dashboard_html())
+                self._send_html(_render_dashboard_html_v3())
             elif parsed.path == "/api/search":
                 self._send_json(_search_and_score(
                     keyword=params.get("keyword") or None,
@@ -442,6 +442,52 @@ class DashboardHandler(BaseHTTPRequestHandler):
 # ---------------------------------------------------------------------------
 
 
+def _normalize_ask(text: str) -> str:
+    """Map plain-English phrasing onto the tiny ask grammar.
+
+    Lets a first-time user type the way they talk ("what should I work
+    on next?") instead of memorizing keywords. Returns a normalized
+    command string, or the original text when nothing matches.
+    """
+    import re
+
+    s = " ".join(text.strip().lower().split()).rstrip("?.!")
+    if not s:
+        return ""
+    phrase_map = {
+        "next": {
+            "what should i work on", "what should i work on next", "what should i do",
+            "what should i do next", "what do i do next", "what now", "whats next",
+            "what is next", "next steps", "next step", "what to do", "what to do next",
+        },
+        "watchlist": {
+            "show my pursuits", "my pursuits", "show pursuits", "what am i tracking",
+            "show watchlist", "show my watchlist", "my watchlist", "what am i pursuing",
+            "whats on my list", "what's on my list",
+        },
+        "digest": {
+            "run todays scan", "run today's scan", "scan now", "todays leads",
+            "today's leads", "scan", "find leads today", "run the scan", "run a scan",
+            "scan today", "scan for leads",
+        },
+        "tasks": {"show my tasks", "my tasks", "all tasks", "list tasks"},
+        "help": {
+            "help me", "what can you do", "what can i ask", "what can i type",
+            "how does this work", "what do i type", "what can i say",
+        },
+    }
+    for target, phrases in phrase_map.items():
+        if s in phrases:
+            return target
+    # "find / search (for / me) <keyword> (leads / contracts / opportunities)"
+    m = re.match(r"^(?:find|search|look)\s+(?:for\s+|me\s+)?(.*)$", s)
+    if m:
+        kw = re.sub(r"\b(leads?|contracts?|opportunit(?:y|ies)|work|jobs?)\b", "", m.group(1)).strip()
+        if kw:
+            return f"search {kw}"
+    return text.strip()
+
+
 def _handle_ask(text: str) -> dict[str, Any]:
     """Route a free-text command to the right capability.
 
@@ -449,7 +495,7 @@ def _handle_ask(text: str) -> dict[str, Any]:
     offline, costs nothing, and behaves predictably. The grammar is
     very small; phrases that don't match return a help response.
     """
-    raw = text.strip()
+    raw = _normalize_ask(text)
     if not raw:
         return _ask_help("(empty input)")
     lower = raw.lower()
@@ -985,6 +1031,12 @@ button.ghost, a.ghost {
   color: var(--ink-2);
   border: 1px solid var(--line-strong);
 }
+html[data-theme="dark"] button.ghost,
+html[data-theme="dark"] a.ghost {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border-color: var(--line-strong);
+}
 button.ghost:hover, a.ghost:hover { border-color: var(--primary); color: var(--primary); }
 .summary {
   min-height: 22px;
@@ -1264,12 +1316,144 @@ html[data-theme="dark"] tr:hover { background: #232a33; }
   nav button { min-height: 36px; padding: .42rem .72rem; }
   .ai-label { flex-basis: 100%; }
 }
+
+/* ---- Chat (Ask Stormwind) ---- */
+.hint { color: var(--mute); font-size: .85rem; }
+.chat-wrap {
+  background: rgba(255,255,255,.96);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chat-log {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+  min-height: 240px;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+.bubble {
+  max-width: 94%;
+  padding: .72rem .95rem;
+  border-radius: 16px;
+  font-size: .92rem;
+  line-height: 1.45;
+  box-shadow: var(--shadow-sm);
+  animation: pop .18s ease;
+}
+@keyframes pop { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+.bubble.user {
+  align-self: flex-end;
+  background: var(--primary);
+  color: #fff;
+  border-bottom-right-radius: 5px;
+  font-weight: 600;
+}
+html[data-theme="dark"] .bubble.user { color: #0d1117; }
+.bubble.bot {
+  align-self: flex-start;
+  width: 94%;
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 5px;
+}
+.bubble.bot .card { margin-bottom: .5rem; }
+.typing { display: inline-flex; gap: .3rem; align-items: center; padding: .15rem 0; }
+.typing i { width: 8px; height: 8px; border-radius: 50%; background: var(--mute); animation: blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .2s; }
+.typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%,80%,100% { opacity: .25; } 40% { opacity: .95; } }
+.suggest-row { display: flex; flex-wrap: wrap; gap: .42rem; padding: 0 .85rem .85rem; }
+.suggest {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: .42rem .85rem;
+  font-size: .85rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.suggest:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+.chat-input-row {
+  display: flex;
+  gap: .5rem;
+  padding: .8rem;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.chat-input-row input { min-height: 50px; font-size: 1rem; border-radius: 999px; padding: .7rem 1.15rem; }
+.chat-send {
+  flex: 0 0 auto;
+  min-height: 50px;
+  padding: 0 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+html[data-theme="dark"] .chat-send { color: #0d1117; }
+.chat-send:hover { background: var(--primary-dark); }
+
+/* ---- Mini bar charts (no external libs) ---- */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: .85rem 1rem;
+  margin: .35rem 0 .7rem;
+}
+.chart-card .chart-title {
+  font-size: .72rem; font-weight: 800; text-transform: uppercase;
+  color: var(--mute); margin-bottom: .55rem; letter-spacing: .03em;
+}
+.bar-row { display: flex; align-items: center; gap: .55rem; margin: .3rem 0; }
+.bar-row .bar-label {
+  flex: 0 0 36%; font-size: .82rem; font-weight: 650; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right;
+}
+.bar-row .bar-track {
+  flex: 1; height: 18px; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 999px; overflow: hidden;
+}
+.bar-row .bar-fill { height: 100%; border-radius: 999px; background: var(--primary); transition: width .55s cubic-bezier(.22,1,.36,1); }
+.bar-row .bar-val { flex: 0 0 auto; min-width: 1.5rem; font-size: .82rem; font-weight: 800; color: var(--ink); }
+html[data-theme="dark"] .chat-wrap, html[data-theme="dark"] .chart-card { background: rgba(27,32,39,.96); }
+
+/* ---- Single-page home tiles + back bar ---- */
+.back-bar {
+  width: calc(100% - 3rem);
+  max-width: 1480px;
+  margin: .85rem auto 0;
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+}
+.back-bar .back-title { font-weight: 760; font-size: 1.05rem; color: var(--ink); }
+.home-hello { margin: .25rem 0 1rem; }
+.home-hello h2 { margin: 0 0 .25rem; font-size: 1.3rem; }
+.home-hello p { margin: 0; color: var(--mute); font-size: .92rem; }
+.tile-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stat-card { display: flex; flex-direction: column; min-height: 96px; }
+.stat-icon { font-size: 1.55rem; line-height: 1; margin-bottom: .4rem; }
+@media (max-width: 720px) {
+  .back-bar { width: auto; margin: .7rem .75rem 0; }
+}
 </style>
 </head>
 <body>
 <div class="app-shell">
 <header>
-  <div class="brand">
+  <div class="brand" onclick="goHome()" title="Back to home" style="cursor:pointer">
     <div class="brand-mark">SW</div>
     <div>
       <h1>Stormwind Contract Workbench <small style="color:rgba(255,255,255,.52);font-weight:650">v2.2</small></h1>
@@ -1288,80 +1472,100 @@ html[data-theme="dark"] tr:hover { background: #232a33; }
     </div>
   </div>
 </header>
-<nav>
-  <button data-tab="ask" class="active">Start Here</button>
-  <button data-tab="digest">Today's Leads</button>
-  <button data-tab="search">Find Leads</button>
-  <button data-tab="watchlist">Pursuits</button>
-  <button data-tab="saved">Prompt Library</button>
-  <button data-tab="profile">Profile & Rules</button>
-  <button data-tab="tasks">Business Setup</button>
-</nav>
+<div id="backBar" class="back-bar" style="display:none">
+  <button class="ghost" type="button" onclick="goHome()">← Home</button>
+  <span class="back-title" id="backTitle"></span>
+</div>
 <main>
-  <section class="overview" id="overview">
-    <button class="stat-card stat-link" onclick="setTab('profile')" type="button">
-      <div class="stat-label">Profiles</div>
-      <div class="stat-value" id="statProfiles">--</div>
-      <div class="stat-note" id="statProfileNote">click for profile and scoring rules</div>
-    </button>
-    <button class="stat-card stat-link" onclick="setTab('watchlist')" type="button">
-      <div class="stat-label">Pursuits</div>
-      <div class="stat-value" id="statWatchlist">--</div>
-      <div class="stat-note">click for tracked contracts</div>
-    </button>
-    <button class="stat-card stat-link" onclick="setTab('tasks'); loadTasks('unblocked')" type="button">
-      <div class="stat-label">Next Tasks</div>
-      <div class="stat-value" id="statTasks">--</div>
-      <div class="stat-note">click for the business tracker</div>
-    </button>
-    <button class="stat-card stat-link" onclick="startLeadScan()" type="button">
-      <div class="stat-label">Today's Leads</div>
-      <div class="stat-value">Scan</div>
-      <div class="stat-note">run a profile-based lead search</div>
-    </button>
+  <section id="homeView">
+    <div class="home-hello">
+      <h2>What do you want to do?</h2>
+      <p>Tap a tile to open a tool. The numbers update on their own — no menus to learn.</p>
+    </div>
+    <section class="overview tile-grid" id="overview">
+      <button class="stat-card stat-link" onclick="setTab('ask')" type="button">
+        <div class="stat-icon">💬</div>
+        <div class="stat-label">Ask Stormwind</div>
+        <div class="stat-value">Chat</div>
+        <div class="stat-note">ask anything in plain English</div>
+      </button>
+      <button class="stat-card stat-link" onclick="startLeadScan()" type="button">
+        <div class="stat-icon">🔍</div>
+        <div class="stat-label">Today's Leads</div>
+        <div class="stat-value">Scan</div>
+        <div class="stat-note">run a fresh lead scan now</div>
+      </button>
+      <button class="stat-card stat-link" onclick="setTab('search')" type="button">
+        <div class="stat-icon">🧭</div>
+        <div class="stat-label">Find Leads</div>
+        <div class="stat-value">Search</div>
+        <div class="stat-note">search by keyword or agency</div>
+      </button>
+      <button class="stat-card stat-link" onclick="setTab('watchlist')" type="button">
+        <div class="stat-icon">📌</div>
+        <div class="stat-label">Pursuits</div>
+        <div class="stat-value" id="statWatchlist">--</div>
+        <div class="stat-note">contracts you're tracking</div>
+      </button>
+      <button class="stat-card stat-link" onclick="setTab('tasks')" type="button">
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">Business Setup</div>
+        <div class="stat-value" id="statTasks">--</div>
+        <div class="stat-note">next steps ready now</div>
+      </button>
+      <button class="stat-card stat-link" onclick="setTab('saved')" type="button">
+        <div class="stat-icon">📚</div>
+        <div class="stat-label">Prompt Library</div>
+        <div class="stat-value">Prompts</div>
+        <div class="stat-note">reusable research prompts</div>
+      </button>
+      <button class="stat-card stat-link" onclick="setTab('profile')" type="button">
+        <div class="stat-icon">📄</div>
+        <div class="stat-label">Profile &amp; Rules</div>
+        <div class="stat-value" id="statProfiles">--</div>
+        <div class="stat-note">who you are &amp; fit rules</div>
+      </button>
+    </section>
+    <div class="chart-card" id="overviewChart" style="display:none"></div>
   </section>
 
-  <section id="tab-ask" class="section active">
+  <section id="tab-ask" class="section">
     <div class="page-intro">
-      <h2>How Jeremy uses this</h2>
-      <p>This workbench is meant to run beside Codex, Claude Code, or another local AI. You tell the AI to use this project directory, it reads the Stormwind profile and rules, searches for realistic contract leads, and writes results back here so you can track them.</p>
+      <h2>Ask Stormwind</h2>
+      <p>Type a question in plain English and press send — like texting an assistant. Not sure what to say? Tap a suggestion.</p>
     </div>
-    <div class="guide-grid">
+    <div class="chat-wrap">
+      <div class="chat-log" id="chatLog"></div>
+      <div class="suggest-row" id="suggestRow">
+        <button class="suggest" onclick="runAsk('next')">✅ What should I work on next?</button>
+        <button class="suggest" onclick="runAsk('watchlist')">📌 Show my pursuits</button>
+        <button class="suggest" onclick="runAsk('digest')">🔍 Run today's scan</button>
+        <button class="suggest" onclick="runAsk('elastic')">⚡ Find Elastic leads</button>
+        <button class="suggest" onclick="runAsk('vtc')">📹 Find VTC leads</button>
+        <button class="suggest" onclick="runAsk('help')">❓ What can I ask?</button>
+      </div>
+      <form class="chat-input-row" id="askForm" onsubmit="event.preventDefault(); runAsk();">
+        <input id="askInput" placeholder="Ask anything… e.g. what should I work on next?" autocomplete="off" autofocus>
+        <button class="chat-send" type="submit" aria-label="Send">➤</button>
+      </form>
+    </div>
+    <div class="guide-grid" style="margin-top:1rem">
       <div class="guide-card">
-        <b>1. Point the AI at the repo</b>
-        <span>Tell Codex or Claude to read this directory, start with PROFILE.md and tasks/, and use the technical-contract research tools.</span>
+        <b>Tip: run this beside your AI</b>
+        <span>Point Codex or Claude at this folder (start with PROFILE.md and tasks/) and it can fill these pages for you.</span>
         <div class="card-actions"><button class="ghost" onclick="copyStarterPrompt()">Copy starter prompt</button></div>
       </div>
       <div class="guide-card">
-        <b>2. Keep the profile honest</b>
-        <span>Your profile controls fit, exclusions, set-aside assumptions, size hints, and what the AI should avoid inventing.</span>
+        <b>Keep your profile honest</b>
+        <span>Your profile controls fit, exclusions, set-aside assumptions, and what the AI should avoid inventing.</span>
         <div class="card-actions"><button class="ghost" onclick="setTab('profile')">Open Profile & Rules</button></div>
       </div>
       <div class="guide-card">
-        <b>3. Scan and track real leads</b>
-        <span>Run the profile-based scan, save realistic contracts to Pursuits, then tell the AI what changed so it can update the tracker.</span>
+        <b>Scan and track real leads</b>
+        <span>Run a scan, save realistic contracts to Pursuits, then tell the AI what changed so it updates the tracker.</span>
         <div class="card-actions"><button class="primary" onclick="startLeadScan()">Scan Today's Leads</button><button class="ghost" onclick="setTab('watchlist')">Open Pursuits</button></div>
       </div>
     </div>
-    <div class="ask-box">
-      <form id="askForm" onsubmit="event.preventDefault(); runAsk();">
-        <input id="askInput" placeholder='try: digest · vtc · help desk · watchlist · next · incumbents 541512'
-               autocomplete="off" autofocus>
-      </form>
-      <div class="chip-row" id="askChips">
-        <span class="chip" data-cmd="next">next</span>
-        <span class="chip" data-cmd="tasks">tasks</span>
-        <span class="chip" data-cmd="watchlist">watchlist</span>
-        <span class="chip" data-cmd="digest">digest</span>
-        <span class="chip" data-cmd="elastic">elastic</span>
-        <span class="chip" data-cmd="vtc">vtc</span>
-        <span class="chip" data-cmd="incumbents 541512">incumbents 541512</span>
-        <span class="chip" data-cmd="far 52.212-2">far 52.212-2</span>
-        <span class="chip" data-cmd="cfr 13 121.201">cfr 13 121.201</span>
-        <span class="chip" data-cmd="help">help</span>
-      </div>
-    </div>
-    <div id="askOutput"></div>
   </section>
 
   <section id="tab-search" class="section">
@@ -1543,6 +1747,15 @@ const PROFILE_LABELS = {
   technical_services: 'Technical services',
   elastic_only: 'Elastic / search only'
 };
+const BAND_COLORS = {
+  strong: 'var(--strong)', promising: 'var(--promising)',
+  monitor: 'var(--monitor)', reject: 'var(--reject)'
+};
+const STAGE_COLORS = {
+  tracking: 'var(--monitor)', assessing: 'var(--promising)', pursuing: 'var(--primary)',
+  submitted: 'var(--accent)', won: 'var(--strong)', lost: 'var(--bad)',
+  withdrawn: 'var(--reject)', expired: 'var(--reject)'
+};
 
 function applyTheme(theme) {
   const normalized = theme === 'dark' ? 'dark' : 'light';
@@ -1600,16 +1813,38 @@ async function api(url, opts={}) {
   return res.json();
 }
 
+const TAB_TITLES = {
+  ask: 'Ask Stormwind', digest: "Today's Leads", search: 'Find Leads',
+  watchlist: 'Pursuits', saved: 'Prompt Library', profile: 'Profile & Rules',
+  tasks: 'Business Setup'
+};
+
+function goHome() {
+  const home = document.getElementById('homeView');
+  if (home) home.style.display = '';
+  const back = document.getElementById('backBar');
+  if (back) back.style.display = 'none';
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function setTab(name) {
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  const home = document.getElementById('homeView');
+  if (home) home.style.display = 'none';
+  const back = document.getElementById('backBar');
+  if (back) {
+    back.style.display = '';
+    const title = document.getElementById('backTitle');
+    if (title) title.textContent = TAB_TITLES[name] || '';
+  }
   document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + name));
   if (name === 'watchlist') loadWatchlist();
   if (name === 'saved') loadSavedSearches();
   if (name === 'digest') loadDigests();
   if (name === 'tasks') loadTasks('unblocked');
-  if (name === 'ask') document.getElementById('askInput').focus();
+  if (name === 'ask') { const i = document.getElementById('askInput'); if (i) i.focus(); }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 document.querySelectorAll('.chip[data-cmd]').forEach(c => c.addEventListener('click', () => {
   const cmd = c.dataset.cmd;
   document.getElementById('askInput').value = cmd;
@@ -1992,54 +2227,131 @@ function openPastScan(id) {
   window.open('/api/digest/report?id=' + encodeURIComponent(id), '_blank', 'noopener');
 }
 
-// ----- Ask command palette -----
-async function runAsk() {
-  const txt = document.getElementById('askInput').value;
-  if (!txt.trim()) return;
-  const out = document.getElementById('askOutput');
-  out.innerHTML = '<div class="ask-output"><span class="spinner"></span>running…</div>';
-  try {
-    const data = await api('/api/ask', { method: 'POST', body: { text: txt }});
-    out.innerHTML = renderAsk(data);
-  } catch (e) {
-    out.innerHTML = `<div class="ask-output" style="color:var(--bad)">${esc(e.message)}</div>`;
-  }
+// ----- Mini bar charts (no external libs) -----
+function countBy(items, keyFn) {
+  const m = {};
+  (items || []).forEach(it => { const k = keyFn(it) || 'unknown'; m[k] = (m[k] || 0) + 1; });
+  return m;
+}
+function barChart(title, rows) {
+  rows = (rows || []).filter(r => r.value > 0);
+  if (!rows.length) return '';
+  const max = Math.max(1, ...rows.map(r => r.value));
+  const body = rows.map(r => {
+    const pct = Math.max(6, Math.round((r.value / max) * 100));
+    return `<div class="bar-row">
+      <div class="bar-label">${esc(r.label)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${r.color || 'var(--primary)'}"></div></div>
+      <div class="bar-val">${r.value}</div>
+    </div>`;
+  }).join('');
+  return `<div class="chart-card">${title ? `<div class="chart-title">${esc(title)}</div>` : ''}${body}</div>`;
 }
 
-function renderAsk(data) {
-  if (!data) return '<div class="ask-output">(no response)</div>';
-  let head = `<div class="ask-output"><b>${esc(data.summary || data.kind || '')}</b>`;
+// ----- Chat (Ask Stormwind) -----
+function chatLog() { return document.getElementById('chatLog'); }
+function addBubble(role, html) {
+  const log = chatLog();
+  if (!log) return null;
+  const div = document.createElement('div');
+  div.className = 'bubble ' + role;
+  div.innerHTML = html;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  return div;
+}
+let _welcomed = false;
+function seedWelcome(tasks) {
+  if (_welcomed || !chatLog()) return;
+  _welcomed = true;
+  let html = `<b>Hi Jeremy 👋 I'm your contracting assistant.</b>
+    <div class="meta-row" style="margin-top:.35rem">Ask me in plain English, or tap a suggestion below. Here's where things stand:</div>`;
+  if (tasks && tasks.length) {
+    html += barChart('Ready to work on now', [{ label: 'Unblocked tasks', value: tasks.length, color: 'var(--primary)' }]);
+    html += '<div style="margin-top:.3rem">' + tasks.slice(0, 3).map(taskRow).join('') + '</div>';
+  } else {
+    html += `<div class="hint">No unblocked tasks right now — try the "Run today's scan" button above.</div>`;
+  }
+  addBubble('bot', html);
+}
+
+async function runAsk(preset) {
+  const inp = document.getElementById('askInput');
+  const txt = (preset != null ? preset : (inp ? inp.value : '')).trim();
+  if (!txt) return;
+  addBubble('user', esc(txt));
+  if (inp) inp.value = '';
+  const thinking = addBubble('bot', '<span class="typing"><i></i><i></i><i></i></span>');
+  try {
+    const data = await api('/api/ask', { method: 'POST', body: { text: txt } });
+    if (thinking) thinking.innerHTML = renderAskBody(data);
+  } catch (e) {
+    if (thinking) thinking.innerHTML = `<span style="color:var(--bad)">${esc(e.message)}</span>`;
+  }
+  const log = chatLog();
+  if (log) log.scrollTop = log.scrollHeight;
+}
+
+function naturalHelp() {
+  const ex = [
+    ["What should I work on next?", "next"],
+    ["Show my pursuits", "watchlist"],
+    ["Run today's scan", "digest"],
+    ["Find Elastic leads", "elastic"],
+    ["Find VTC leads", "vtc"],
+    ["Who wins NAICS 541512?", "incumbents 541512"],
+    ["Look up FAR 52.212-2", "far 52.212-2"],
+  ];
+  return `<div class="meta-row" style="margin-top:.3rem">Tap any of these, or just type a question:</div>
+    <div class="suggest-row" style="padding:.5rem 0 0">`
+    + ex.map(([t, c]) => `<button class="suggest" onclick="runAsk('${c}')">${esc(t)}</button>`).join('')
+    + '</div>';
+}
+
+function renderAskBody(data) {
+  if (!data) return '(no response)';
   const k = data.kind || '';
   const r = data.results;
+  const head = `<b>${esc(data.summary || k || '')}</b>`;
   if (k === 'tasks/unblocked' || k === 'tasks/list') {
-    if (!r || !r.length) return head + '<div class="hint">(no tasks)</div></div>';
-    return head + '<div style="margin-top:.6rem">' + r.map(taskRow).join('') + '</div></div>';
+    if (!r || !r.length) return head + '<div class="hint">(no tasks)</div>';
+    const counts = countBy(r, t => t.status);
+    const chart = barChart('Tasks by status', Object.entries(counts).map(([s, v]) => ({ label: s, value: v, color: STAGE_COLORS[s] || 'var(--primary)' })));
+    return head + chart + '<div style="margin-top:.4rem">' + r.map(taskRow).join('') + '</div>';
   }
   if (k === 'watchlist/list') {
-    if (!r || !r.length) return head + '<div class="hint">(empty)</div></div>';
-    return head + '<div style="margin-top:.6rem">' + r.map(watchRow).join('') + '</div></div>';
+    if (!r || !r.length) return head + '<div class="hint">(empty)</div>';
+    const counts = countBy(r, e => e.status);
+    const chart = barChart('Pursuits by stage', Object.entries(counts).map(([s, v]) => ({ label: statusLabel(s), value: v, color: STAGE_COLORS[s] || 'var(--primary)' })));
+    return head + chart + '<div style="margin-top:.4rem">' + r.map(watchRow).join('') + '</div>';
   }
   if (k === 'score') {
-    if (!r || !r.length) return head + '<div class="hint">(no matches)</div></div>';
-    return head + '<div style="margin-top:.6rem">' + r.slice(0,8).map(cardHtml).join('') + '</div></div>';
+    if (!r || !r.length) return head + '<div class="hint">(no matches)</div>';
+    const counts = countBy(r, o => o.band);
+    const chart = barChart('Matches by machine read', ['strong', 'promising', 'monitor', 'reject'].map(b => ({ label: b, value: counts[b] || 0, color: BAND_COLORS[b] })));
+    return head + chart + '<div style="margin-top:.4rem">' + r.slice(0, 8).map(cardHtml).join('') + '</div>';
   }
   if (k === 'usaspending/incumbents') {
-    return head + '<div style="margin-top:.6rem">' + (r || []).slice(0, 12).map(awardRow).join('') + '</div></div>';
+    return head + '<div style="margin-top:.4rem">' + (r || []).slice(0, 12).map(awardRow).join('') + '</div>';
   }
   if (k === 'ecfr/section') {
-    return head + `<div style="margin-top:.6rem">
+    return head + `<div style="margin-top:.4rem">
       <div class="meta-row"><b>${esc(r.citation || '')}</b>${r.heading ? ' — ' + esc(r.heading) : ''}</div>
       <pre>${esc((r.text || '').slice(0, 4000))}</pre>
-    </div></div>`;
+    </div>`;
   }
   if (k === 'digest/run') {
-    return head + `<div class="meta-row"><b>${r.shown}</b> leads found from <b>${r.scanned}</b> recent notices checked.</div></div>`;
+    const lanes = (r && r.lane_counts) || {};
+    const chart = barChart('Leads by lane', Object.entries(lanes).map(([l, v]) => ({ label: l, value: v, color: 'var(--primary)' })));
+    const items = (r && r.items) || [];
+    return head + `<div class="meta-row"><b>${r.shown}</b> leads from <b>${r.scanned}</b> notices checked.</div>`
+      + chart + '<div style="margin-top:.4rem">' + items.slice(0, 8).map(cardHtml).join('') + '</div>';
   }
   if (k === 'help') {
-    return head + '<ul style="margin-top:.5rem;padding-left:1.25rem;font-size:.88rem;line-height:1.6">'
-      + (r.examples || []).map(x => `<li><code>${esc(x)}</code></li>`).join('') + '</ul></div>';
+    return head + naturalHelp();
   }
-  return head + `<pre style="margin-top:.6rem">${esc(JSON.stringify(r, null, 2))}</pre></div>`;
+  if (k === 'error') return `<span style="color:var(--bad)">${esc(data.summary || 'error')}</span>`;
+  return head + `<pre style="margin-top:.4rem">${esc(JSON.stringify(r, null, 2))}</pre>`;
 }
 
 function taskRow(t) {
@@ -2122,14 +2434,14 @@ async function refreshOverview() {
     ]);
     setText('statWatchlist', watchlist.length);
     setText('statTasks', tasks.length);
-    const askOut = document.getElementById('askOutput');
-    if (askOut && !askOut.innerHTML.trim()) {
-      askOut.innerHTML = renderAsk({
-        kind: 'tasks/unblocked',
-        summary: 'Next actionable workstreams',
-        results: tasks,
-      });
+    const oc = document.getElementById('overviewChart');
+    if (oc) {
+      const counts = countBy(watchlist, e => e.status);
+      const rows = Object.entries(counts).map(([s, v]) => ({ label: statusLabel(s), value: v, color: STAGE_COLORS[s] || 'var(--primary)' }));
+      if (rows.length) { oc.innerHTML = barChart('Your pursuits by stage', rows); oc.style.display = ''; }
+      else { oc.style.display = 'none'; }
     }
+    seedWelcome(tasks);
   } catch (e) {
     setText('statWatchlist', '--');
     setText('statTasks', '--');
@@ -2160,6 +2472,623 @@ async function init() {
     document.getElementById('dbMeta').textContent = 'init error: ' + e.message;
   }
 }
+init();
+</script>
+</body>
+</html>"""
+    return html_doc.replace("__PROJECT_ROOT_JSON__", json.dumps(str(PROJECT_ROOT)))
+
+
+# ---------------------------------------------------------------------------
+# v3 dashboard — single-page glass / system-tree redesign
+# ---------------------------------------------------------------------------
+
+
+def _render_dashboard_html_v3() -> str:
+    html_doc = r"""<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06080f">
+<title>Stormwind Command</title>
+<style>
+:root{
+  --bg:#06080f; --bg-2:#0a0e1a;
+  --surface:rgba(255,255,255,.05); --surface-2:rgba(255,255,255,.085);
+  --ink:#eef2ff; --ink-2:#cdd5ea; --mute:#8893b2;
+  --line:rgba(255,255,255,.10); --line-strong:rgba(255,255,255,.18);
+  --primary:#818cf8; --primary-dark:#a5b4fc; --primary-soft:rgba(129,140,248,.16);
+  --accent:#34d399; --accent-soft:rgba(52,211,153,.14);
+  --warn:#fbbf24; --warn-soft:rgba(251,191,36,.14);
+  --bad:#fb7185; --bad-soft:rgba(251,113,133,.14);
+  --strong:#34d399; --promising:#60a5fa; --monitor:#fbbf24; --reject:#94a3b8;
+  --grad:linear-gradient(135deg,#22d3ee 0%,#818cf8 52%,#e879f9 100%);
+  --grad-soft:linear-gradient(135deg,rgba(34,211,238,.16),rgba(232,121,249,.16));
+  --radius:16px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow-md:0 18px 50px rgba(0,0,0,.55);
+  --glass:rgba(255,255,255,.045);
+}
+html[data-theme="light"]{
+  --bg:#eef1f8; --bg-2:#e6ebf6;
+  --surface:rgba(255,255,255,.8); --surface-2:rgba(255,255,255,.6);
+  --ink:#0f1530; --ink-2:#27314e; --mute:#5a647e;
+  --line:rgba(15,21,48,.10); --line-strong:rgba(15,21,48,.18);
+  --primary:#5b6bf0; --primary-dark:#3b49c9; --primary-soft:rgba(91,107,240,.12);
+  --glass:rgba(255,255,255,.6);
+  --shadow-md:0 18px 50px rgba(35,45,90,.18);
+}
+*{box-sizing:border-box;}
+html{min-height:100%;background:var(--bg);}
+body{
+  margin:0; min-height:100vh; color:var(--ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  background:radial-gradient(1200px 700px at 12% -8%,rgba(34,211,238,.10),transparent 60%),
+             radial-gradient(1000px 700px at 95% 0%,rgba(232,121,249,.10),transparent 55%),
+             linear-gradient(180deg,var(--bg-2),var(--bg));
+  -webkit-font-smoothing:antialiased; letter-spacing:.1px; overflow-x:hidden;
+}
+.aurora{position:fixed;inset:-30vh -10vw;z-index:-1;pointer-events:none;filter:blur(60px);opacity:.55;}
+.aurora::before,.aurora::after{content:"";position:absolute;width:48vw;height:48vw;border-radius:50%;}
+.aurora::before{background:radial-gradient(circle,#22d3ee,transparent 60%);top:0;left:5%;animation:drift1 18s ease-in-out infinite;}
+.aurora::after{background:radial-gradient(circle,#e879f9,transparent 60%);bottom:0;right:5%;animation:drift2 22s ease-in-out infinite;}
+@keyframes drift1{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(8vw,12vh) scale(1.15);}}
+@keyframes drift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-10vw,-8vh) scale(1.1);}}
+@media (prefers-reduced-motion:reduce){.aurora::before,.aurora::after{animation:none;}}
+button,input,select,textarea{font:inherit;letter-spacing:inherit;}
+a{color:var(--primary-dark);}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+
+/* ---- top bar ---- */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:1rem;
+  padding:.7rem clamp(.9rem,3vw,2rem);
+  background:rgba(8,11,20,.55);backdrop-filter:blur(18px) saturate(140%);
+  border-bottom:1px solid var(--line);
+}
+html[data-theme="light"] .topbar{background:rgba(255,255,255,.55);}
+.brand{display:flex;align-items:center;gap:.7rem;cursor:pointer;min-width:0;}
+.brand-mark{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:900;color:#06080f;background:var(--grad);box-shadow:0 6px 20px rgba(129,140,248,.45);}
+.brand h1{margin:0;font-size:1rem;font-weight:800;white-space:nowrap;}
+.brand .tag{font-size:.72rem;color:var(--mute);}
+.topbar .spacer{flex:1;}
+.pill{display:inline-flex;align-items:center;gap:.4rem;padding:.32rem .7rem;border-radius:999px;font-size:.74rem;font-weight:700;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);white-space:nowrap;}
+.dot{width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.18);}
+.icon-btn{min-height:34px;padding:.3rem .7rem;border-radius:999px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);font-size:.78rem;font-weight:700;cursor:pointer;}
+.icon-btn:hover{border-color:var(--line-strong);color:var(--ink);}
+
+/* ---- hero ---- */
+.hero{max-width:1320px;margin:0 auto;padding:clamp(1.4rem,4vw,3rem) clamp(.9rem,3vw,2rem) .5rem;}
+.hero h2{margin:0;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.05;font-weight:850;letter-spacing:-.02em;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hero p{margin:.7rem 0 0;color:var(--ink-2);font-size:clamp(.95rem,2vw,1.1rem);max-width:60ch;}
+.hero-strip{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.1rem;}
+.hero-stat{display:flex;align-items:center;gap:.55rem;padding:.55rem .9rem;border-radius:14px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow-sm);}
+.hero-stat b{font-size:1.15rem;}
+.hero-stat span{font-size:.78rem;color:var(--mute);}
+
+/* ---- layout : tree + stack ---- */
+.layout{max-width:1320px;margin:0 auto;padding:1.2rem clamp(.9rem,3vw,2rem) 4rem;display:grid;grid-template-columns:248px minmax(0,1fr);gap:1.4rem;align-items:start;}
+.tree{position:sticky;top:74px;display:flex;flex-direction:column;gap:.15rem;padding:1rem .9rem;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);}
+.tree-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;}
+.tree-head span{font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);}
+.tree-head button{font-size:.68rem;color:var(--primary-dark);background:none;border:none;cursor:pointer;font-weight:700;}
+.tree-item{position:relative;display:flex;align-items:center;gap:.6rem;padding:.5rem .55rem .5rem 1.5rem;border-radius:11px;cursor:pointer;color:var(--ink-2);border:1px solid transparent;}
+.tree-item::before{content:"";position:absolute;left:.55rem;top:0;bottom:0;width:1px;background:var(--line-strong);}
+.tree-item::after{content:"";position:absolute;left:.32rem;top:50%;width:8px;height:8px;border-radius:50%;background:var(--bg-2);border:1.5px solid var(--line-strong);transform:translateY(-50%);transition:.2s;}
+.tree-item:first-of-type::before{top:50%;}
+.tree-item:last-of-type::before{bottom:50%;}
+.tree-item:hover{background:var(--surface);color:var(--ink);}
+.tree-item.active{background:var(--grad-soft);color:var(--ink);border-color:var(--line-strong);}
+.tree-item.active::after{background:var(--primary);border-color:var(--primary);box-shadow:0 0 0 4px rgba(129,140,248,.22);}
+.tree-ic{font-size:1rem;}
+.tree-lbl{flex:1;font-size:.86rem;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tree-count{font-size:.7rem;font-weight:800;padding:.05rem .42rem;border-radius:999px;background:var(--surface-2);color:var(--ink-2);min-width:1.2rem;text-align:center;}
+
+.stack{display:flex;flex-direction:column;gap:1rem;min-width:0;}
+/* ---- node (expandable glass panel) ---- */
+.node{background:var(--glass);backdrop-filter:blur(16px) saturate(130%);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);overflow:hidden;transition:border-color .2s;scroll-margin-top:74px;}
+.node.open{border-color:var(--line-strong);}
+.node-head{width:100%;display:flex;align-items:center;gap:.9rem;padding:1rem 1.1rem;background:none;border:none;color:inherit;cursor:pointer;text-align:left;}
+.node-head:hover{background:rgba(255,255,255,.03);}
+.node-idx{font-family:ui-monospace,Consolas,monospace;font-size:.78rem;font-weight:700;color:var(--mute);}
+.node-icon{width:40px;height:40px;flex:0 0 auto;display:grid;place-items:center;border-radius:12px;font-size:1.15rem;background:var(--grad-soft);border:1px solid var(--line);}
+.node-title{flex:1;min-width:0;}
+.node-title b{display:block;font-size:1.02rem;font-weight:780;}
+.node-sub{display:block;color:var(--mute);font-size:.82rem;margin-top:.1rem;}
+.node-badge{font-size:.74rem;font-weight:800;padding:.18rem .55rem;border-radius:999px;background:var(--surface-2);color:var(--ink-2);}
+.node-chevron{color:var(--mute);font-size:1.1rem;transition:transform .35s ease;}
+.node.open .node-chevron{transform:rotate(180deg);color:var(--primary-dark);}
+.node-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s cubic-bezier(.22,1,.36,1);}
+.node.open .node-body{grid-template-rows:1fr;}
+.node-inner{overflow:hidden;}
+.node-pad{padding:0 1.1rem 1.2rem;}
+
+/* ---- buttons / inputs ---- */
+button.primary,a.primary{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:42px;padding:.55rem 1rem;border-radius:12px;font-weight:800;cursor:pointer;text-decoration:none;border:none;color:#06080f;background:var(--grad);box-shadow:0 8px 24px rgba(129,140,248,.32);}
+button.primary:hover,a.primary:hover{filter:brightness(1.06);transform:translateY(-1px);}
+button.ghost,a.ghost{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:42px;padding:.55rem .95rem;border-radius:12px;font-weight:700;cursor:pointer;text-decoration:none;color:var(--ink-2);background:var(--surface);border:1px solid var(--line-strong);}
+button.ghost:hover,a.ghost:hover{color:var(--ink);border-color:var(--primary);background:var(--primary-soft);}
+input,select,textarea{width:100%;min-height:42px;padding:.58rem .8rem;border:1px solid var(--line-strong);border-radius:12px;color:var(--ink);background:rgba(255,255,255,.04);outline:none;}
+html[data-theme="light"] input,html[data-theme="light"] select,html[data-theme="light"] textarea{background:rgba(255,255,255,.7);}
+input::placeholder{color:var(--mute);}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(129,140,248,.22);}
+select option{color:#0f1530;}
+.actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:.4rem 0 .9rem;}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem;margin-bottom:.9rem;}
+.filters label,.scan-options label{display:flex;flex-direction:column;gap:.32rem;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);}
+.summary{min-height:20px;color:var(--mute);font-size:.88rem;margin:.3rem 0 .7rem;}
+.intro{color:var(--ink-2);font-size:.92rem;line-height:1.5;margin:0 0 1rem;}
+
+/* ---- cards / data ---- */
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1rem;margin-bottom:.7rem;}
+.card:hover{border-color:var(--line-strong);}
+.card .title{font-size:1rem;line-height:1.35;font-weight:760;margin:.5rem 0 .6rem;}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;}
+.score-stack{display:flex;flex-wrap:wrap;align-items:center;gap:.32rem;}
+.due-pill{white-space:nowrap;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:.22rem .58rem;font-size:.74rem;font-weight:700;}
+.badge{display:inline-flex;align-items:center;min-height:22px;padding:.14rem .55rem;border-radius:999px;color:#06080f;font-size:.7rem;font-weight:800;}
+.badge.strong{background:var(--strong);}.badge.promising{background:var(--promising);}
+.badge.monitor{background:var(--monitor);}.badge.reject{background:var(--reject);color:#0f1530;}
+.badge.status{background:var(--primary);}
+.lane-chip{display:inline-flex;align-items:center;min-height:22px;background:var(--primary-soft);color:var(--primary-dark);border:1px solid var(--line-strong);padding:.12rem .5rem;border-radius:999px;font-size:.7rem;font-weight:700;}
+.fit-pill{display:inline-flex;align-items:center;min-height:22px;padding:.14rem .5rem;border-radius:999px;font-size:.7rem;font-weight:800;background:var(--warn-soft);color:var(--warn);border:1px solid var(--line);}
+.fit-pill.solo,.fit-pill.light_help{background:var(--accent-soft);color:var(--accent);}
+.fit-pill.team{background:var(--bad-soft);color:var(--bad);}
+.detail-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin:.5rem 0;}
+.detail{min-width:0;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:.5rem .6rem;}
+.detail span{display:block;color:var(--mute);font-size:.66rem;font-weight:800;text-transform:uppercase;}
+.detail b{display:block;margin-top:.16rem;font-size:.82rem;font-weight:650;overflow-wrap:anywhere;}
+.meta-row{color:var(--ink-2);font-size:.85rem;margin:.2rem 0;overflow-wrap:anywhere;}
+code{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:.06rem .3rem;font-family:ui-monospace,Consolas,monospace;font-size:.85em;}
+.reasons{margin-top:.6rem;display:flex;flex-wrap:wrap;gap:.28rem;font-family:ui-monospace,Consolas,monospace;font-size:.72rem;}
+.reasons span{padding:.16rem .45rem;background:var(--accent-soft);color:var(--accent);border:1px solid var(--line);border-radius:6px;overflow-wrap:anywhere;}
+.reasons span.neg{background:var(--bad-soft);color:var(--bad);}
+.card-actions{margin-top:.75rem;display:flex;gap:.45rem;flex-wrap:wrap;}
+.card-actions button,.card-actions a{font-size:.82rem;min-height:34px;padding:.35rem .7rem;}
+.empty{color:var(--mute);text-align:center;padding:2rem 1rem;background:rgba(255,255,255,.02);border:1px dashed var(--line-strong);border-radius:var(--radius);}
+.row-link{color:var(--primary-dark);text-decoration:none;font-weight:650;}
+.row-link:hover{text-decoration:underline;}
+.table-wrap{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);}
+table{width:100%;min-width:720px;border-collapse:collapse;}
+th,td{text-align:left;padding:.72rem .8rem;font-size:.86rem;border-bottom:1px solid var(--line);vertical-align:top;}
+th{background:var(--surface-2);color:var(--mute);font-size:.7rem;font-weight:800;text-transform:uppercase;}
+tbody tr:last-child td{border-bottom:0;}
+tr:hover{background:rgba(255,255,255,.03);}
+.guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem;margin-top:1rem;}
+.guide-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:.9rem;}
+.guide-card b{display:block;margin-bottom:.25rem;}
+.guide-card span{display:block;color:var(--mute);font-size:.84rem;line-height:1.42;margin-bottom:.6rem;}
+.artifact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.7rem;}
+.artifact-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:.9rem;}
+.scan-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-top:.6rem;}
+.past-scan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.7rem;}
+.past-scan{cursor:pointer;}
+
+/* ---- charts ---- */
+.chart-card{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:.85rem 1rem;margin:.4rem 0 .7rem;}
+.chart-title{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin-bottom:.55rem;}
+.bar-row{display:flex;align-items:center;gap:.55rem;margin:.32rem 0;}
+.bar-label{flex:0 0 36%;font-size:.82rem;font-weight:650;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;}
+.bar-track{flex:1;height:18px;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:999px;background:var(--grad);transition:width .6s cubic-bezier(.22,1,.36,1);box-shadow:0 0 12px rgba(129,140,248,.4);}
+.bar-val{flex:0 0 auto;min-width:1.4rem;font-size:.82rem;font-weight:800;}
+
+/* ---- chat ---- */
+.chat-log{display:flex;flex-direction:column;gap:.7rem;min-height:200px;max-height:56vh;overflow-y:auto;padding:.2rem .1rem .4rem;}
+.bubble{max-width:94%;padding:.72rem .95rem;border-radius:16px;font-size:.92rem;line-height:1.45;animation:pop .18s ease;}
+@keyframes pop{from{transform:translateY(6px);opacity:0;}to{transform:none;opacity:1;}}
+.bubble.user{align-self:flex-end;background:var(--grad);color:#06080f;font-weight:650;border-bottom-right-radius:5px;}
+.bubble.bot{align-self:flex-start;width:94%;background:var(--surface-2);border:1px solid var(--line);border-bottom-left-radius:5px;}
+.typing{display:inline-flex;gap:.3rem;align-items:center;}
+.typing i{width:8px;height:8px;border-radius:50%;background:var(--mute);animation:blink 1.2s infinite;}
+.typing i:nth-child(2){animation-delay:.2s;}.typing i:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,80%,100%{opacity:.25;}40%{opacity:.95;}}
+.suggest-row{display:flex;flex-wrap:wrap;gap:.42rem;margin:.7rem 0;}
+.suggest{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:.42rem .85rem;font-size:.85rem;font-weight:650;cursor:pointer;}
+.suggest:hover{border-color:var(--primary);color:var(--ink);background:var(--primary-soft);}
+.chat-input-row{display:flex;gap:.5rem;margin-top:.3rem;}
+.chat-input-row input{min-height:50px;border-radius:999px;padding:.7rem 1.1rem;font-size:1rem;}
+.chat-send{flex:0 0 auto;min-height:50px;padding:0 1.2rem;border-radius:999px;border:none;background:var(--grad);color:#06080f;font-size:1.2rem;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(129,140,248,.32);}
+.hint{color:var(--mute);font-size:.85rem;}
+
+/* ---- modal / toast / spinner ---- */
+.modal-backdrop{position:fixed;inset:0;background:rgba(3,5,12,.66);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:60;padding:1rem;}
+.modal-backdrop.show{display:flex;}
+.modal{background:var(--bg-2);border:1px solid var(--line-strong);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:1.25rem;max-width:520px;width:100%;}
+.modal h3{margin:0 0 .75rem;}
+.modal label{display:block;margin-top:.75rem;font-size:.8rem;font-weight:800;text-transform:uppercase;color:var(--mute);}
+.modal-actions{margin-top:1rem;display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap;}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line-strong);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:.4rem;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.toast{position:fixed;bottom:20px;right:20px;max-width:min(420px,calc(100vw - 32px));background:var(--bg-2);border:1px solid var(--line-strong);color:var(--ink);padding:.72rem .9rem;border-radius:12px;z-index:100;box-shadow:var(--shadow-md);}
+
+@media (max-width:920px){
+  .layout{grid-template-columns:1fr;}
+  .tree{position:static;flex-direction:row;flex-wrap:wrap;gap:.4rem;}
+  .tree-head{flex-basis:100%;}
+  .tree-item{padding:.45rem .7rem;border:1px solid var(--line);}
+  .tree-item::before,.tree-item::after{display:none;}
+  .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:560px){
+  .brand .tag{display:none;}
+  .detail-grid,.filters{grid-template-columns:1fr;}
+  .tree-lbl{font-size:.82rem;}
+}
+</style>
+</head>
+<body>
+<div class="aurora"></div>
+
+<div class="topbar">
+  <div class="brand" onclick="goHome()" title="Back to top">
+    <div class="brand-mark">SW</div>
+    <div>
+      <h1>Stormwind Command</h1>
+      <div class="tag">federal technical-services workbench</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill" id="dbMeta"><span class="dot"></span>loading…</span>
+  <span class="pill" id="envBadge">PROD</span>
+  <button class="icon-btn" id="themeToggle" type="button" onclick="toggleTheme()">Light</button>
+</div>
+
+<div class="hero">
+  <h2>What do you want to do?</h2>
+  <p>One page. Tap any panel to expand it — like opening a branch on a tree. Scan for leads, track pursuits, manage setup. Everything's clickable.</p>
+  <div class="hero-strip">
+    <div class="hero-stat"><b id="heroPursuits">--</b><span>pursuits tracked</span></div>
+    <div class="hero-stat"><b id="heroTasks">--</b><span>next steps ready</span></div>
+    <div class="hero-stat"><b id="heroProfiles">--</b><span>scoring profiles</span></div>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="tree" id="tree">
+    <div class="tree-head"><span>System tree</span><button type="button" onclick="expandAll()">Expand all</button></div>
+    <div class="tree-item" data-node="digest" onclick="openNode('digest')"><span class="tree-ic">🔍</span><span class="tree-lbl">Today's Leads</span></div>
+    <div class="tree-item" data-node="search" onclick="openNode('search')"><span class="tree-ic">🧭</span><span class="tree-lbl">Find Leads</span></div>
+    <div class="tree-item" data-node="watchlist" onclick="openNode('watchlist')"><span class="tree-ic">📌</span><span class="tree-lbl">Pursuits</span><span class="tree-count" id="tc-watchlist">0</span></div>
+    <div class="tree-item" data-node="tasks" onclick="openNode('tasks')"><span class="tree-ic">✅</span><span class="tree-lbl">Business Setup</span><span class="tree-count" id="tc-tasks">0</span></div>
+    <div class="tree-item" data-node="saved" onclick="openNode('saved')"><span class="tree-ic">📚</span><span class="tree-lbl">Prompt Library</span></div>
+    <div class="tree-item" data-node="profile" onclick="openNode('profile')"><span class="tree-ic">📄</span><span class="tree-lbl">Profile &amp; Rules</span></div>
+  </aside>
+
+  <main class="stack">
+    <!-- TODAY'S LEADS -->
+    <section class="node open" id="node-digest">
+      <button class="node-head" type="button" onclick="toggleNode('digest')">
+        <span class="node-idx">01</span><span class="node-icon">🔍</span>
+        <span class="node-title"><b>Today's Leads</b><span class="node-sub">Run a profile-based scan and see solo / light-help / team reads.</span></span>
+        <span class="node-chevron">⌄</span>
+      </button>
+      <div class="node-body"><div class="node-inner"><div class="node-pad">
+        <select id="d-profile" style="display:none"><option value="technical_services">technical_services</option></select>
+        <div class="scan-options">
+          <label>Scan range
+            <select id="d-days"><option value="30" selected>Practical pool</option><option value="14">Wider recent pool</option><option value="7">Fresh only</option><option value="3">Very fresh only</option></select>
+          </label>
+          <label>Fit threshold
+            <select id="d-min_score"><option value="2" selected>Show maybes</option><option value="3">Good fit and up</option><option value="5">Strong only</option></select>
+          </label>
+        </div>
+        <div class="actions" style="margin-top:.8rem"><button class="primary" onclick="runDigest()">Scan now</button><button class="ghost" onclick="loadDigests()">Refresh past scans</button></div>
+        <div id="digestStatus"></div>
+        <div class="meta-row" style="margin-top:1rem;font-weight:700">Past scans</div>
+        <div id="digestTable"></div>
+      </div></div></div>
+    </section>
+
+    <!-- SEARCH -->
+    <section class="node" id="node-search">
+      <button class="node-head" type="button" onclick="toggleNode('search')">
+        <span class="node-idx">02</span><span class="node-icon">🧭</span>
+        <span class="node-title"><b>Find Leads</b><span class="node-sub">Search the local SAM mirror by keyword, agency, place, set-aside.</span></span>
+        <span class="node-chevron">⌄</span>
+      </button>
+      <div class="node-body"><div class="node-inner"><div class="node-pad">
+        <div class="filters">
+          <label>What kind of work?<input id="f-keyword" placeholder="help desk, VTC, ACAS, Python"></label>
+          <label>NAICS<input id="f-naics" placeholder="541512"></label>
+          <label>State<input id="f-state" placeholder="VA, MD, DC"></label>
+          <label>Set-aside<input id="f-set_aside" placeholder="SBA"></label>
+          <label>Type<input id="f-type" placeholder="Solicitation"></label>
+          <label>Posted in last X days<input id="f-days" type="number" value="30" min="1"></label>
+          <label>Minimum machine score<input id="f-min_score" type="number" value="2"></label>
+          <label>Profile<select id="f-profile"><option value="technical_services">technical_services</option></select></label>
+          <label>Limit<input id="f-limit" type="number" value="50" min="5"></label>
+        </div>
+        <div class="actions"><button class="primary" onclick="runSearch()">Find matching leads</button><button class="ghost" onclick="resetFilters()">Reset</button><button class="ghost" onclick="openSaveSearch()">Save as reusable search…</button></div>
+        <div class="summary" id="searchSummary"></div>
+        <div id="searchResults"></div>
+      </div></div></div>
+    </section>
+
+    <!-- WATCHLIST -->
+    <section class="node" id="node-watchlist">
+      <button class="node-head" type="button" onclick="toggleNode('watchlist')">
+        <span class="node-idx">03</span><span class="node-icon">📌</span>
+        <span class="node-title"><b>Pursuits</b><span class="node-sub">Your working list — move leads through stages, rate your own fit.</span></span>
+        <span class="node-badge" id="badge-watchlist">0</span>
+        <span class="node-chevron">⌄</span>
+      </button>
+      <div class="node-body"><div class="node-inner"><div class="node-pad">
+        <div id="overviewChart" class="chart-card" style="display:none"></div>
+        <div class="actions">
+          <label style="display:flex;align-items:center;gap:.4rem;text-transform:none;font-size:.85rem;color:var(--ink-2)">Status filter:<select id="w-status" style="width:auto"><option value="">all</option></select></label>
+          <button class="primary" onclick="loadWatchlist()">Refresh</button>
+        </div>
+        <div id="watchlistTable"></div>
+      </div></div></div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="node" id="node-tasks">
+      <button class="node-head" type="button" onclick="toggleNode('tasks')">
+        <span class="node-idx">04</span><span class="node-icon">✅</span>
+        <span class="node-title"><b>Business Setup</b><span class="node-sub">Stormwind operating tasks — formation, SAM, VetCert, eVA, first bid.</span></span>
+        <span class="node-badge" id="badge-tasks">0</span>
+        <span class="node-chevron">⌄</span>
+      </button>
+      <div class="node-body"><div class="node-inner"><div class="node-pad">
+        <div class="actions"><button class="primary" onclick="loadTasks('unblocked')">Unblocked (what's next)</button><button class="ghost" onclick="loadTasks('all')">All</button><button class="ghost" onclick="loadTasks('blocked')">Blocked</button><button class="ghost" onclick="loadTasks('unknown')">Unknown</button></div>
+        <div class="summary" id="tasksSummary"></div>
+        <div id="tasksList"></div>
+      </div></div></div>
+    </section>
+
+    <!-- SAVED -->
+    <section class="node" id="node-saved">
+      <button class="node-head" type="button" onclick="toggleNode('saved')">
+        <span class="node-idx">05</span><span class="node-icon">📚</span>
+        <span class="node-title"><b>Prompt Library</b><span class="node-sub">Reusable research prompts and saved filter searches.</span></span>
+        <span class="node-chevron">⌄</span>
+      </button>
+      <div class="node-body"><div class="node-inner"><div class="node-pad">
+        <div class="card" id="promptDropZone" style="border-style:dashed">
+          <div class="title">Drop prompt files here</div>
+          <div class="meta-row">Accepts .txt and .md files. Each becomes a reusable prompt card stored locally.</div>
+          <div class="card-actions"><button class="primary" onclick="document.getElementById('promptFileInput').click()">Choose files</button><input id="promptFileInput" type="file" accept=".txt,.md,text/plain,text/markdown" multiple style="display:none"></div>
+        </div>
+        <div class="actions"><button class="ghost" onclick="loadSavedSearches()">Refresh library</button></div>
+        <div id="savedSearchTable"></div>
+      </div></div></div>
+    </section>
+
+    <!-- PROFILE -->
+    <section class="node" id="node-profile">
+      <button class="node-head" type="button" onclick="toggleNode('profile')">
+        <span class="node-idx">06</span><span class="node-icon">📄</span>
+        <span class="node-title"><b>Profile &amp; Rules</b><span class="node-sub">Who Stormwind is, what fits, what to exclude — read by your AI.</span></span>
+        <span class="node-badge" id="badge-profile">0</span>
+        <span class="node-chevron">⌄</span>
+      </button>
+      <div class="node-body"><div class="node-inner"><div class="node-pad">
+        <div class="actions"><button class="ghost" onclick="copyStarterPrompt()">📋 Copy AI starter prompt</button><span class="hint" style="align-self:center">Paste into Claude or Codex to point it at this project.</span></div>
+        <div class="artifact-grid">
+          <div class="artifact-card"><div class="title">Business profile</div><div class="meta-row">Identity, location focus, NAICS, set-aside posture.</div><div class="meta-row"><code>PROFILE.md</code></div><div class="card-actions"><button class="primary" onclick="openArtifact('PROFILE.md')">Open</button><button class="ghost" onclick="copyPath('PROFILE.md')">Copy path</button></div></div>
+          <div class="artifact-card"><div class="title">Technical-services fit rules</div><div class="meta-row">Capability lanes, vocabulary, exclusions, scoring.</div><div class="meta-row"><code>criteria/TECHNICAL_SERVICES_PROFILE.md</code></div><div class="card-actions"><button class="primary" onclick="openArtifact('criteria/TECHNICAL_SERVICES_PROFILE.md')">Open</button><button class="ghost" onclick="copyPath('criteria/TECHNICAL_SERVICES_PROFILE.md')">Copy path</button></div></div>
+          <div class="artifact-card"><div class="title">Document index guide</div><div class="meta-row">How SOW/PWS attachments and evidence are stored.</div><div class="meta-row"><code>docs/DOCUMENT_INDEX.md</code></div><div class="card-actions"><button class="primary" onclick="openArtifact('docs/DOCUMENT_INDEX.md')">Open</button><button class="ghost" onclick="copyPath('docs/DOCUMENT_INDEX.md')">Copy path</button></div></div>
+          <div class="artifact-card"><div class="title">Business task tracker</div><div class="meta-row">Formation, SAM, VetCert, state registration, eVA.</div><div class="meta-row"><code>tasks/</code></div><div class="card-actions"><button class="primary" onclick="openNode('tasks')">Open Tracker</button><button class="ghost" onclick="openArtifact('tasks')">Open Folder</button></div></div>
+        </div>
+      </div></div></div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <div id="modalBody"></div>
+    <div class="modal-actions"><button class="ghost" onclick="closeModal()">Cancel</button><button class="primary" id="modalConfirm">Confirm</button></div>
+  </div>
+</div>
+
+<script>
+const PROJECT_ROOT = __PROJECT_ROOT_JSON__;
+const STATE = { profiles:['technical_services'], statuses:[], env:'prod' };
+const STATUS_LABELS = {tracking:'Tracking',assessing:'Assessing fit',pursuing:'Writing response',submitted:'Submitted',won:'Won',lost:'Lost',withdrawn:'Withdrawn',expired:'Expired'};
+const PROFILE_LABELS = {technical_services:'Technical services',elastic_only:'Elastic / search only'};
+const BAND_COLORS = {strong:'var(--strong)',promising:'var(--promising)',monitor:'var(--monitor)',reject:'var(--reject)'};
+const STAGE_COLORS = {tracking:'var(--monitor)',assessing:'var(--promising)',pursuing:'var(--primary)',submitted:'var(--accent)',won:'var(--strong)',lost:'var(--bad)',withdrawn:'var(--reject)',expired:'var(--reject)'};
+
+function applyTheme(t){const n=t==='light'?'light':'dark';document.documentElement.dataset.theme=n;localStorage.setItem('swcb-theme',n);const b=document.getElementById('themeToggle');if(b)b.textContent=n==='dark'?'Light':'Dark';}
+function toggleTheme(){applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');}
+applyTheme(localStorage.getItem('swcb-theme')||'dark');
+
+/* ---- navigation : system tree ---- */
+const NODES=['digest','search','watchlist','saved','profile','tasks'];
+function toggleNode(name,force){
+  const el=document.getElementById('node-'+name); if(!el) return;
+  const open=force===true?true:(force===false?false:!el.classList.contains('open'));
+  el.classList.toggle('open',open);
+  const ti=document.querySelector('.tree-item[data-node="'+name+'"]'); if(ti) ti.classList.toggle('active',open);
+  if(open) lazyLoad(name);
+}
+function openNode(name){
+  toggleNode(name,true);
+  const el=document.getElementById('node-'+name);
+  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  if(name==='ask'){const i=document.getElementById('askInput');if(i) setTimeout(()=>i.focus(),300);}
+}
+function setTab(name){ openNode(name); }            /* back-compat */
+function goHome(){ window.scrollTo({top:0,behavior:'smooth'}); }
+function expandAll(){ const anyClosed=NODES.some(n=>{const e=document.getElementById('node-'+n);return e&&!e.classList.contains('open');}); NODES.forEach(n=>toggleNode(n,anyClosed)); const b=event&&event.target; if(b) b.textContent=anyClosed?'Collapse all':'Expand all'; }
+const _loaded={};
+function lazyLoad(name){
+  if(name==='watchlist'){loadWatchlist();}
+  else if(name==='saved'){loadSavedSearches();}
+  else if(name==='digest'){ if(!_loaded.digest){loadDigests();_loaded.digest=true;} }
+  else if(name==='tasks'){loadTasks('unblocked');}
+}
+function startLeadScan(){ openNode('digest'); setTimeout(()=>runDigest(),360); }
+
+/* ---- generic ---- */
+async function api(url,opts={}){
+  const res=await fetch(url,{method:opts.method||'GET',headers:{'Content-Type':'application/json'},body:opts.body?JSON.stringify(opts.body):undefined});
+  if(!res.ok){const t=await res.text();throw new Error(`${res.status}: ${t}`);} return res.json();
+}
+function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function showToast(msg){const t=document.createElement('div');t.textContent=msg;t.className='toast';document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+async function copyText(text,label='Copied'){await navigator.clipboard.writeText(text);showToast(label);}
+function copyStarterPrompt(){const text=`Use the technical-contract-research MCP tools and the Stormwind Contracting profile in ${PROJECT_ROOT}. Start by reading PROFILE.md, criteria/TECHNICAL_SERVICES_PROFILE.md, docs/DOCUMENT_INDEX.md, and tasks/. Search for realistic first-contract technical-services opportunities, reject weak keyword-only matches, verify public notice details, and update the local dashboard/watchlist with realistic leads and notes.`;copyText(text,'Starter prompt copied');}
+function copyPath(rel){const r=PROJECT_ROOT.replace(/[\\\/]$/,'');copyText(r+'\\\\'+rel.replace(/\//g,'\\\\'),'Path copied');}
+async function openArtifact(path){try{await api('/api/open-artifact',{method:'POST',body:{path}});showToast('Opened '+path);}catch(e){showToast('Could not open: '+e.message);}}
+
+/* ---- charts ---- */
+function countBy(items,fn){const m={};(items||[]).forEach(it=>{const k=fn(it)||'unknown';m[k]=(m[k]||0)+1;});return m;}
+function barChart(title,rows){rows=(rows||[]).filter(r=>r.value>0);if(!rows.length)return '';const max=Math.max(1,...rows.map(r=>r.value));
+  const body=rows.map(r=>{const pct=Math.max(6,Math.round(r.value/max*100));return `<div class="bar-row"><div class="bar-label">${esc(r.label)}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;${r.color?'background:'+r.color:''}"></div></div><div class="bar-val">${r.value}</div></div>`;}).join('');
+  return `<div class="chart-card">${title?`<div class="chart-title">${esc(title)}</div>`:''}${body}</div>`;}
+
+/* ---- chat ---- */
+function chatLog(){return document.getElementById('chatLog');}
+function addBubble(role,html){const log=chatLog();if(!log)return null;const d=document.createElement('div');d.className='bubble '+role;d.innerHTML=html;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
+let _welcomed=false;
+function seedWelcome(tasks){if(_welcomed||!chatLog())return;_welcomed=true;
+  let html=`<b>Hi Jeremy 👋 I'm your contracting assistant.</b><div class="meta-row" style="margin-top:.35rem">Ask me in plain English, or tap a suggestion. Here's where things stand:</div>`;
+  if(tasks&&tasks.length){html+=barChart('Ready to work on now',[{label:'Unblocked tasks',value:tasks.length}]);html+='<div style="margin-top:.3rem">'+tasks.slice(0,3).map(taskRow).join('')+'</div>';}
+  else{html+=`<div class="hint">No unblocked tasks right now — try the "Run today's scan" button.</div>`;}
+  addBubble('bot',html);}
+async function runAsk(preset){const inp=document.getElementById('askInput');const txt=(preset!=null?preset:(inp?inp.value:'')).trim();if(!txt)return;
+  addBubble('user',esc(txt));if(inp)inp.value='';const think=addBubble('bot','<span class="typing"><i></i><i></i><i></i></span>');
+  try{const data=await api('/api/ask',{method:'POST',body:{text:txt}});if(think)think.innerHTML=renderAskBody(data);}
+  catch(e){if(think)think.innerHTML=`<span style="color:var(--bad)">${esc(e.message)}</span>`;}
+  const log=chatLog();if(log)log.scrollTop=log.scrollHeight;}
+function naturalHelp(){const ex=[["What should I work on next?","next"],["Show my pursuits","watchlist"],["Run today's scan","digest"],["Find Elastic leads","elastic"],["Find VTC leads","vtc"],["Who wins NAICS 541512?","incumbents 541512"],["Look up FAR 52.212-2","far 52.212-2"]];
+  return `<div class="meta-row" style="margin-top:.3rem">Tap any of these, or just type a question:</div><div class="suggest-row" style="margin:.5rem 0 0">`+ex.map(([t,c])=>`<button class="suggest" onclick="runAsk('${c}')">${esc(t)}</button>`).join('')+'</div>';}
+function renderAskBody(data){if(!data)return '(no response)';const k=data.kind||'';const r=data.results;const head=`<b>${esc(data.summary||k||'')}</b>`;
+  if(k==='tasks/unblocked'||k==='tasks/list'){if(!r||!r.length)return head+'<div class="hint">(no tasks)</div>';const c=countBy(r,t=>t.status);return head+barChart('Tasks by status',Object.entries(c).map(([s,v])=>({label:s,value:v,color:STAGE_COLORS[s]})))+'<div style="margin-top:.4rem">'+r.map(taskRow).join('')+'</div>';}
+  if(k==='watchlist/list'){if(!r||!r.length)return head+'<div class="hint">(empty)</div>';const c=countBy(r,e=>e.status);return head+barChart('Pursuits by stage',Object.entries(c).map(([s,v])=>({label:statusLabel(s),value:v,color:STAGE_COLORS[s]})))+'<div style="margin-top:.4rem">'+r.map(watchRow).join('')+'</div>';}
+  if(k==='score'){if(!r||!r.length)return head+'<div class="hint">(no matches)</div>';const c=countBy(r,o=>o.band);return head+barChart('Matches by machine read',['strong','promising','monitor','reject'].map(b=>({label:b,value:c[b]||0,color:BAND_COLORS[b]})))+'<div style="margin-top:.4rem">'+r.slice(0,8).map(cardHtml).join('')+'</div>';}
+  if(k==='usaspending/incumbents'){return head+'<div style="margin-top:.4rem">'+(r||[]).slice(0,12).map(awardRow).join('')+'</div>';}
+  if(k==='ecfr/section'){return head+`<div style="margin-top:.4rem"><div class="meta-row"><b>${esc(r.citation||'')}</b>${r.heading?' — '+esc(r.heading):''}</div><pre>${esc((r.text||'').slice(0,4000))}</pre></div>`;}
+  if(k==='digest/run'){const lanes=(r&&r.lane_counts)||{};const items=(r&&r.items)||[];return head+`<div class="meta-row"><b>${r.shown}</b> leads from <b>${r.scanned}</b> notices checked.</div>`+barChart('Leads by lane',Object.entries(lanes).map(([l,v])=>({label:l,value:v})))+'<div style="margin-top:.4rem">'+items.slice(0,8).map(cardHtml).join('')+'</div>';}
+  if(k==='help'){return head+naturalHelp();}
+  if(k==='error')return `<span style="color:var(--bad)">${esc(data.summary||'error')}</span>`;
+  return head+`<pre style="margin-top:.4rem">${esc(JSON.stringify(r,null,2))}</pre>`;}
+
+/* ---- shared renderers ---- */
+function reasonHtml(rs){return rs.map(r=>`<span class="${r.points<0?'neg':''}">${r.points>=0?'+':''}${r.points} ${esc(r.kind)}: ${esc(r.detail)}</span>`).join('');}
+function lanesHtml(ls){return (ls||[]).map(l=>`<span class="lane-chip">${esc(l)}</span>`).join('');}
+function workLocation(o){if(o.work_location)return o.work_location;if(o.pop_city&&o.pop_state)return `${o.pop_city}, ${o.pop_state}`;if(o.pop_state)return o.pop_state;const t=`${o.title||''} ${o.description||''}`.toLowerCase();if(t.includes('remote')||t.includes('virtual'))return 'Remote/virtual mentioned';return 'Not listed';}
+function deliveryRead(o){if(o.delivery_read)return o.delivery_read;const t=`${o.title||''} ${o.description||''} ${o.type||''}`.toLowerCase();
+  if(/top secret|ts\/sci|secret clearance|facility clearance|24\/7|nationwide|staff augmentation|enterprise-wide|managed services/.test(t))return {label:'Likely teaming',detail:'Metadata has scale, clearance, or staffing flags. Verify scope.',level:'team'};
+  if(/sources sought|rfi|special notice/.test(t))return {label:'Monitor / shape',detail:'Market research notice; useful for positioning, not a bid yet.',level:'monitor'};
+  if((o.score||0)>=5)return {label:'Plausibly solo',detail:'High metadata fit; still verify SOW/PWS.',level:'solo'};
+  if((o.score||0)>=3)return {label:'Solo or light help',detail:'Worth checking documents for size, clearance, schedule.',level:'light_help'};
+  return {label:'Maybe / verify',detail:'Weak metadata fit; inspect documents before spending time.',level:'monitor'};}
+function profileLabel(p){return PROFILE_LABELS[p]||p||'-';}
+function statusLabel(s){return STATUS_LABELS[s]||s||'-';}
+function humanScoreControl(id,cur=''){return `<label style="display:inline-flex;align-items:center;gap:.35rem;margin:0;text-transform:none;font-size:.8rem;font-weight:700;color:var(--mute)">My fit<select onchange='setHumanScore("${esc(id)}", this.value)' style="width:auto;min-height:32px;padding:.25rem .4rem"><option value="">not rated</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${String(cur||'')===String(n)?'selected':''}>${n}</option>`).join('')}</select></label>`;}
+function cardHtml(o){const band=o.band||'monitor';const due=o.response_deadline||'-';const d=deliveryRead(o);
+  return `<article class="card"><div class="card-top"><div class="score-stack"><span class="badge ${band}">SCORE ${o.score??'-'}</span>${lanesHtml(o.lanes)}<span class="fit-pill ${esc(d.level||'')}">${esc(d.label||'')}</span></div><div class="due-pill">Due ${esc(due)}</div></div>
+    <div class="title">${esc(o.title||'(no title)')}</div>
+    <div class="detail-grid"><div class="detail"><span>Agency</span><b>${esc(o.department||'-')}</b></div><div class="detail"><span>Work location</span><b>${esc(workLocation(o))}</b></div><div class="detail"><span>Plausibility</span><b>${esc(d.label||'-')}</b></div><div class="detail"><span>Set-aside</span><b>${esc(o.set_aside||'-')}</b></div></div>
+    <div class="meta-row"><b>Why that read:</b> ${esc(d.detail||'-')}</div>
+    <div class="meta-row"><b>Type:</b> ${esc(o.type||'-')} · <b>Posted:</b> ${esc(o.posted_date||'-')} · <b>NAICS:</b> ${esc(o.naics_code||'-')}</div>
+    <div class="meta-row"><b>Notice:</b> <code>${esc(o.notice_id)}</code>${o.link?` · <a class="row-link" target="_blank" href="${esc(o.link)}">open notice</a>`:''}</div>
+    <div class="reasons">${reasonHtml(o.reasons||[])}</div>
+    <div class="card-actions"><button class="primary" onclick='addToWatchlist(${JSON.stringify(o).replace(/'/g,"&#39;")})'>+ Watchlist</button>${o.link?`<a class="ghost" target="_blank" href="${esc(o.link)}">Open notice</a>`:''}</div></article>`;}
+function taskRow(t){return `<div class="card" style="padding:.7rem .85rem"><span class="badge status">${esc(t.status)}</span> <span style="font-weight:700">${esc(t.id)}</span> — ${esc(t.title)}${t.dependencies&&t.dependencies.length?`<div class="meta-row">deps: ${t.dependencies.map(esc).join(', ')}</div>`:''}</div>`;}
+function watchRow(e){return `<div class="card" style="padding:.7rem .85rem"><span class="badge status">${esc(statusLabel(e.status))}</span> ${e.band?`<span class="badge ${e.band}">${esc(e.band)}</span>`:''} <b>${esc(e.title||'-')}</b><div class="meta-row">due ${esc(e.response_deadline||'-')} · ${esc(e.notice_id||'')}${e.human_score?' · my fit '+esc(String(e.human_score))+'/5':''}</div></div>`;}
+function awardRow(a){const amt=a.amount?'$'+Number(a.amount).toLocaleString(undefined,{maximumFractionDigits:0}):'-';return `<div class="card" style="padding:.7rem .85rem"><b>${esc(amt)}</b> — ${esc(a.recipient_name||'-')}<div class="meta-row">${esc(a.agency||'-')} / ${esc(a.sub_agency||'-')}</div><div class="meta-row">NAICS ${esc(a.naics||'-')} · ${esc(a.start_date||'-')} → ${esc(a.end_date||'-')}</div>${a.description?`<div class="meta-row">${esc(String(a.description).slice(0,200))}</div>`:''}</div>`;}
+
+/* ---- search ---- */
+async function runSearch(){const params=new URLSearchParams();['keyword','naics','state','set_aside','type','days','min_score','profile','limit'].forEach(f=>{const el=document.getElementById('f-'+f);if(el&&el.value!=='')params.set(f,el.value);});
+  const s=document.getElementById('searchSummary');s.innerHTML='<span class="spinner"></span>searching…';
+  try{const data=await api('/api/search?'+params.toString());if(data.error){s.innerHTML=`<span style="color:var(--bad)">${esc(data.error)}</span>`;return;}
+    s.textContent=data.results.length?`${data.results.length} leads matched · profile: ${profileLabel(data.profile)}`:`No leads matched. Try a broader keyword, lower score, or longer window.`;
+    document.getElementById('searchResults').innerHTML=data.results.length?data.results.map(cardHtml).join(''):`<div class="empty">No matches.</div>`;}
+  catch(e){s.innerHTML=`<span style="color:var(--bad)">${esc(e.message)}</span>`;}}
+function resetFilters(){['keyword','naics','state','set_aside','type'].forEach(f=>document.getElementById('f-'+f).value='');document.getElementById('f-days').value=30;document.getElementById('f-min_score').value=2;document.getElementById('f-limit').value=50;}
+async function addToWatchlist(o){try{await api('/api/watchlist',{method:'POST',body:{opportunity:{notice_id:o.notice_id,title:o.title,sol_number:o.sol_number,department:o.department,naics_code:o.naics_code,set_aside:o.set_aside,response_deadline:o.response_deadline,link:o.link},status:'tracking',score:o.score,band:o.band,lanes:o.lanes}});showToast('Added to watchlist');refreshOverview();}catch(e){showToast('Error: '+e.message);}}
+
+/* ---- watchlist ---- */
+async function loadWatchlist(){const status=document.getElementById('w-status').value;const url='/api/watchlist'+(status?'?status='+encodeURIComponent(status):'');const data=await api(url);const t=document.getElementById('watchlistTable');
+  if(!data.length){t.innerHTML='<div class="empty">No pursuits yet. Add some from Find Leads or Today\'s Leads.</div>';return;}
+  const rows=data.map(e=>`<tr><td><span class="badge status">${esc(statusLabel(e.status))}</span></td><td>${esc(e.title||'-')}<br><small style="color:var(--mute)">${esc(e.notice_id)}${e.link?` · <a class="row-link" target="_blank" href="${esc(e.link)}">notice</a>`:''}</small></td>
+    <td>Machine: ${e.score??'-'} ${e.band?`<span class="badge ${e.band}" style="margin-left:.25rem">${e.band}</span>`:''}<br>${humanScoreControl(e.notice_id,e.human_score)}</td>
+    <td>${esc(e.response_deadline||'-')}</td><td>${esc(e.naics_code||'-')}<br><small style="color:var(--mute)">${esc(e.set_aside||'')}</small></td>
+    <td><select onchange='changeStatus("${esc(e.notice_id)}", this.value)' style="width:auto">${STATE.statuses.map(s=>`<option ${s===e.status?'selected':''} value="${s}">${statusLabel(s)}</option>`).join('')}</select>
+      <button class="ghost" onclick='addNote("${esc(e.notice_id)}")' style="margin-left:.25rem;padding:.28rem .5rem;font-size:.76rem;min-height:30px">+ note</button>
+      <button class="ghost" onclick='removeEntry("${esc(e.notice_id)}")' style="margin-left:.25rem;padding:.28rem .5rem;font-size:.76rem;min-height:30px;color:var(--bad)">remove</button></td></tr>`).join('');
+  t.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Stage</th><th>Lead</th><th>Fit</th><th>Due</th><th>NAICS / Set-aside</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>`;}
+async function changeStatus(id,status){await api('/api/watchlist/status',{method:'POST',body:{notice_id:id,status}});showToast('Status updated');loadWatchlist();refreshOverview();}
+async function setHumanScore(id,hs){await api('/api/watchlist/human-score',{method:'POST',body:{notice_id:id,human_score:hs}});showToast(hs?'Human score saved':'Human score cleared');loadWatchlist();}
+async function addNote(id){const text=prompt('Note for '+id+':');if(!text)return;await api('/api/watchlist/note',{method:'POST',body:{notice_id:id,text}});showToast('Note saved');}
+async function removeEntry(id){if(!confirm('Remove this entry?'))return;await api('/api/watchlist/remove',{method:'POST',body:{notice_id:id}});showToast('Removed');loadWatchlist();refreshOverview();}
+
+/* ---- saved searches / prompts ---- */
+function openSaveSearch(){const filters={};['keyword','naics','state','set_aside','type','days'].forEach(f=>{const el=document.getElementById('f-'+f);if(el&&el.value!=='')filters[f==='type'?'notice_type':f]=el.value;});
+  const profile=document.getElementById('f-profile').value;const minScore=document.getElementById('f-min_score').value;
+  document.getElementById('modalTitle').textContent='Save current filters';
+  document.getElementById('modalBody').innerHTML=`<label>Name<input id="save-name" placeholder="elastic-weekly"></label><label>Description<input id="save-desc"></label><p style="font-size:.85rem;color:var(--mute);margin-top:.75rem">Filters: <code>${esc(JSON.stringify(filters))}</code><br>profile=${esc(profile)} · min_score=${esc(minScore)}</p>`;
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('modalConfirm').onclick=async()=>{const name=document.getElementById('save-name').value.trim();if(!name){showToast('Name required');return;}await api('/api/saved-searches',{method:'POST',body:{name,description:document.getElementById('save-desc').value,filters,profile,min_score:parseInt(minScore||'0',10)}});closeModal();showToast('Saved');};}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+function promptNameFromFile(f){return f.replace(/\.(txt|md|markdown)$/i,'').replace(/[_-]+/g,' ').trim()||f;}
+async function savePromptFile(file){const text=(await file.text()).trim();if(!text){showToast(file.name+' is empty');return;}const name=promptNameFromFile(file.name);await api('/api/saved-searches',{method:'POST',body:{name,description:text.slice(0,180),filters:{prompt_text:text,source_file:file.name},profile:'technical_services',min_score:0}});showToast('Saved prompt: '+name);}
+async function savePromptFiles(files){const ok=Array.from(files||[]).filter(f=>/\.(txt|md|markdown)$/i.test(f.name)||f.type.startsWith('text/'));if(!ok.length){showToast('Drop .txt or .md prompt files');return;}for(const f of ok)await savePromptFile(f);loadSavedSearches();}
+async function loadSavedSearches(){const data=await api('/api/saved-searches');const t=document.getElementById('savedSearchTable');
+  if(!data.length){t.innerHTML='<div class="empty">No prompts or saved searches yet. Drop a .txt or .md above.</div>';return;}
+  const rows=data.map(s=>`<tr><td><b>${esc(s.name)}</b><br><small style="color:var(--mute)">${esc(s.description||'')}</small></td><td>${savedSearchSummary(s)}</td><td>${s.filters&&s.filters.prompt_text?'Prompt file':'Structured search'}<br><small style="color:var(--mute)">${esc(profileLabel(s.profile))}</small></td><td>${esc(s.last_run_at||'never')}</td><td><button class="primary" style="font-size:.8rem;min-height:32px" onclick='runSaved(${JSON.stringify(s)})'>${s.filters&&s.filters.prompt_text?'Use prompt':'Run search'}</button> <button class="ghost" style="font-size:.8rem;min-height:32px;color:var(--bad)" onclick='deleteSaved("${esc(s.name)}")'>Delete</button></td></tr>`).join('');
+  t.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Contents</th><th>Kind</th><th>Last used</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>`;}
+function savedSearchSummary(s){const f=s.filters||{};if(f.prompt_text){const p=String(f.prompt_text).replace(/\s+/g,' ').slice(0,240);return `<div>${esc(p)}${String(f.prompt_text).length>240?'...':''}</div><small style="color:var(--mute)">${f.source_file?'from '+esc(f.source_file):'prompt text'}</small>`;}return `<code>${esc(JSON.stringify(f))}</code><br><small style="color:var(--mute)">min machine score ${esc(String(s.min_score))}</small>`;}
+function runSaved(s){if(s.filters&&s.filters.prompt_text){copyText(s.filters.prompt_text,'Prompt copied — paste into Claude or Codex');return;}
+  openNode('search');['keyword','naics','state','set_aside'].forEach(f=>{document.getElementById('f-'+f).value=s.filters[f]||'';});document.getElementById('f-type').value=s.filters.notice_type||s.filters.type||'';if(s.filters.days!=null)document.getElementById('f-days').value=s.filters.days;document.getElementById('f-profile').value=s.profile;document.getElementById('f-min_score').value=s.min_score;runSearch();}
+async function deleteSaved(name){if(!confirm('Delete saved search '+name+'?'))return;await api('/api/saved-searches/delete',{method:'POST',body:{name}});showToast('Deleted');loadSavedSearches();}
+
+/* ---- digest ---- */
+async function runDigest(){const status=document.getElementById('digestStatus');status.innerHTML='<span class="spinner"></span>running the scan…';
+  try{const data=await api('/api/digest/run',{method:'POST',body:{profile:document.getElementById('d-profile').value,days:parseInt(document.getElementById('d-days').value,10),min_score:parseInt(document.getElementById('d-min_score').value,10)}});
+    const lanes=barChart('Leads by lane',Object.entries(data.lane_counts||{}).map(([l,v])=>({label:l,value:v})));
+    status.innerHTML=`<div class="card"><div class="title">Lead scan complete</div><div class="meta-row">${esc(data.summary||'')}</div><div class="meta-row">Checked <b>${data.scanned}</b> notices and found <b>${data.shown}</b> leads over the fit threshold.</div>${lanes}</div><div style="margin-top:1rem">${(data.items||[]).length?data.items.slice(0,25).map(cardHtml).join(''):'<div class="empty">No leads met this threshold. Try "Show maybes" or a wider range.</div>'}</div>`;
+    loadDigests();refreshOverview();}
+  catch(e){status.innerHTML=`<span style="color:var(--bad)">${esc(e.message)}</span>`;}}
+async function loadDigests(){const data=await api('/api/digests');const t=document.getElementById('digestTable');
+  if(!data.length){t.innerHTML='<div class="empty">No past scans yet. Run Scan now.</div>';return;}
+  t.innerHTML=`<div class="past-scan-grid">${data.map(d=>`<article class="card past-scan" onclick="openPastScan(${d.id})"><div class="card-top"><span class="badge promising">${d.candidates_shown} leads</span><span class="due-pill">${esc(shortDateTime(d.run_at))}</span></div><div class="title">${esc(profileLabel(d.profile))}</div><div class="meta-row">${esc(d.summary||`${d.candidates_shown} leads from ${d.candidates_scanned} checked`)}</div><div class="card-actions"><button class="ghost" onclick="event.stopPropagation(); openPastScan(${d.id})">Open scan</button></div></article>`).join('')}</div>`;}
+function shortDateTime(v){if(!v)return '-';return String(v).replace('T',' ').slice(0,16);}
+function openPastScan(id){window.open('/api/digest/report?id='+encodeURIComponent(id),'_blank','noopener');}
+
+/* ---- tasks ---- */
+STATE.taskStatuses=['planned','in-progress','blocked','pending','done','dropped','unknown'];
+async function loadTasks(mode){const sum=document.getElementById('tasksSummary');const list=document.getElementById('tasksList');sum.innerHTML='<span class="spinner"></span>loading…';
+  let url='/api/tasks';if(mode==='unblocked')url='/api/tasks/unblocked';else if(mode&&mode!=='all')url='/api/tasks?status='+encodeURIComponent(mode);
+  try{const data=await api(url);sum.textContent=(mode==='unblocked'?'Next steps ready now: ':(mode||'all')+': ')+data.length;
+    if(!data.length){list.innerHTML='<div class="empty">No tasks in this view.</div>';return;}
+    list.innerHTML=data.map(t=>`<div class="card"><span class="badge status">${esc(t.status)}</span> <span class="badge ${t.priority==='high'?'strong':(t.priority==='medium'?'promising':'monitor')}">${esc(t.priority)}</span><div class="title">${esc(t.id)} — ${esc(t.title)}</div><div class="meta-row"><b>type:</b> ${esc(t.type)} · <b>effort:</b> ${esc(t.effort)} · <b>deps:</b> ${(t.dependencies||[]).map(esc).join(', ')||'-'}</div><div class="meta-row"><b>tags:</b> ${(t.tags||[]).map(esc).join(', ')||'-'} · <b>updated:</b> ${esc(t.updated||'-')}</div><div class="card-actions">${STATE.taskStatuses.map(s=>s===t.status?'':`<button class="ghost" onclick='setTaskStatus("${esc(t.id)}","${s}")' style="font-size:.76rem;min-height:30px">→ ${s}</button>`).join('')}</div></div>`).join('');}
+  catch(e){sum.innerHTML=`<span style="color:var(--bad)">${esc(e.message)}</span>`;}}
+async function setTaskStatus(id,status){const note=prompt('Optional note for '+id+' → '+status+' (Cancel to skip):');if(note===null)return;await api('/api/tasks/status',{method:'POST',body:{task_id:id,status,note}});showToast(id+' → '+status);loadTasks('all');refreshOverview();}
+
+/* ---- overview / init ---- */
+function setText(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+async function refreshOverview(){try{const [watchlist,tasks]=await Promise.all([api('/api/watchlist'),api('/api/tasks/unblocked')]);
+    setText('heroPursuits',watchlist.length);setText('heroTasks',tasks.length);
+    setText('badge-watchlist',watchlist.length);setText('badge-tasks',tasks.length);
+    setText('tc-watchlist',watchlist.length);setText('tc-tasks',tasks.length);
+    const oc=document.getElementById('overviewChart');
+    if(oc){const c=countBy(watchlist,e=>e.status);const rows=Object.entries(c).map(([s,v])=>({label:statusLabel(s),value:v,color:STAGE_COLORS[s]}));if(rows.length){oc.innerHTML=barChart('Your pursuits by stage',rows);oc.style.display='';}else oc.style.display='none';}
+    seedWelcome(tasks);}
+  catch(e){setText('heroPursuits','--');setText('heroTasks','--');}}
+async function init(){
+  const dz=document.getElementById('promptDropZone');const fi=document.getElementById('promptFileInput');
+  if(fi)fi.addEventListener('change',ev=>savePromptFiles(ev.target.files));
+  if(dz){['dragenter','dragover'].forEach(n=>dz.addEventListener(n,ev=>{ev.preventDefault();dz.style.borderColor='var(--primary)';}));['dragleave','drop'].forEach(n=>dz.addEventListener(n,ev=>{ev.preventDefault();dz.style.borderColor='';}));dz.addEventListener('drop',ev=>savePromptFiles(ev.dataTransfer.files));}
+  document.querySelector('.tree-item[data-node="digest"]').classList.add('active');
+  loadDigests();
+  try{const meta=await api('/api/profiles');STATE.profiles=meta.profiles;STATE.statuses=meta.statuses;STATE.env=meta.env||'prod';
+    ['f-profile','d-profile'].forEach(id=>{const sel=document.getElementById(id);sel.innerHTML=STATE.profiles.map(p=>`<option value="${p}">${profileLabel(p)}</option>`).join('');if(STATE.profiles.includes('technical_services'))sel.value='technical_services';});
+    document.getElementById('w-status').innerHTML='<option value="">all stages</option>'+STATE.statuses.map(s=>`<option value="${s}">${statusLabel(s)}</option>`).join('');
+    const envName=STATE.env==='dev'?'DEV':'PROD';document.getElementById('dbMeta').innerHTML=`<span class="dot"></span>${envName} · local SAM mirror`;document.getElementById('envBadge').textContent=envName;
+    setText('heroProfiles',STATE.profiles.length);setText('badge-profile',STATE.profiles.length);
+    refreshOverview();}
+  catch(e){document.getElementById('dbMeta').textContent='init error: '+e.message;}}
 init();
 </script>
 </body>

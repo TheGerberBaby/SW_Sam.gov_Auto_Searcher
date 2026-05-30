@@ -16,6 +16,10 @@ venv/
 data/*.db
 data/*.db-*
 data/*.sqlite*
+data/dev/
+
+# Local editor / agent tooling
+.claude/
 data/ContractOpportunitiesFullCSV.csv*
 data/*.csv
 data/exports/
