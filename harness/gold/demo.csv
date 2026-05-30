@@ -1,0 +1,7 @@
+notice_id,label,note
+c773efdb6f5c489fad2f734f67d07a6c,fit,355 Wing VTC Upgrade — real Air Force VTC services with NAICS 541512 + SBA set-aside
+572174807b114786b4e1671497435c96,monitor,AV LIT RFI — Sources Sought; pipeline-building only
+75b6c6f0282748e19b4a09e1b870bd9c,monitor,SOPS/COMET software license w/ telemetry — license renewal flavor; not a services bid
+506acbc7f5944860ada5865c03dd52f1,reject,Coverall and Rag contract — false hit on the term "rag"
+6560465a32b44ebbab5d1ed7279c8361,reject,HOSE HYD commodity buy — DLA hardware part
+fc6d549c2bcb4457a4b1dc8fbf4c9c44,reject,HEX BOLT commodity buy — DLA hardware part

@@ -24,6 +24,14 @@ data/document-cache/
 # v2 generated digests
 data/digests/
 
+# v2.2 API caches (refresh on demand)
+data/usaspending_cache.json
+data/ecfr_cache.json
+
+# Secrets that must never be committed
+email/config.toml
+*.app_password
+
 # Generated research exports
 *.xlsx
 *_Leads_*.csv

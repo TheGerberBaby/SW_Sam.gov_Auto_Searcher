@@ -1,0 +1,46 @@
+# roadmap-review.yaml — weekly business roadmap surface
+#
+# Suggested schedule: Monday 07:00
+#   goose schedule add --schedule-id roadmap-weekly --cron "0 7 * * MON" \
+#     --recipe-source ./goose/recipes/roadmap-review.yaml
+
+name: roadmap-review
+description: |
+  Read PROFILE.md + tasks/ + ROADMAP_REVIEW.md, identify the
+  next-actionable workstreams per the never-hard-block rule, surface
+  any tasks whose status is `unknown`, and produce a Monday-morning
+  briefing. Does NOT mutate task status.
+
+extensions:
+  - technical-contract-research
+
+parameters:
+  parallel_tracks:
+    type: integer
+    default: 3
+    description: Minimum number of parallel workstreams to surface
+
+instructions: |
+  You are doing a weekly roadmap review for Stormwind Contracting.
+
+  Steps:
+
+  1. Read `PROFILE.md` and `ROADMAP_REVIEW.md`. Apply the
+     never-hard-block rule throughout.
+  2. Call `list_tasks(status="unknown")` and `list_tasks(status="blocked")`.
+  3. Call `next_unblocked(limit=10)`.
+  4. For each blocked task, check whether the blocker named in its
+     body has plausibly lifted (date passed, etc.). If yes, flag
+     as a candidate for status change — do NOT change it.
+  5. Produce a short markdown briefing with:
+     - At least {{parallel_tracks}} next-actionable workstreams,
+       sorted by priority then id (the unblocked list).
+     - Open `unknown` questions, grouped so Jeremy can knock several
+       out in one pass.
+     - Any blocked tasks whose blocker looks lifted.
+     - Anything `pending` that has been pending more than 14 days
+       (worth a status nudge to the originating system).
+  6. Save the briefing to `data/digests/roadmap_<YYYY-MM-DD>.md`.
+
+  Never propose new tasks unilaterally — only surface gaps and
+  existing-task moves.

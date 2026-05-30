@@ -26,6 +26,9 @@ from document_store import (
 from scoring import available_profiles, bulk_score, score_opportunity
 from watchlist import Store as WatchlistStore, VALID_STATUSES
 from digest import generate_digest
+import tasks_lib
+import usaspending
+import ecfr
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_DIR / "data" / "contracts.db"
@@ -518,6 +521,142 @@ def run_saved_search(name: str, limit: int = 20) -> dict[str, Any]:
         profile=saved.profile,
         limit=limit,
     )
+
+
+# ---------------------------------------------------------------------------
+# v2.2 tools: USAspending, eCFR, tasks spine
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def find_incumbents(
+    naics: str = "",
+    agency: str = "",
+    keyword: str = "",
+    pop_state: str = "",
+    years_back: int = 3,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """USAspending: recent procurement award recipients matching the filters.
+
+    These are likely incumbents for a similar future opportunity.
+    """
+    try:
+        awards = usaspending.find_incumbents(
+            naics=naics or None,
+            agency=agency or None,
+            keyword=keyword or None,
+            pop_state=pop_state or None,
+            years_back=years_back,
+            limit=limit,
+        )
+    except usaspending.USAspendingError as exc:
+        raise ValueError(str(exc)) from exc
+    return {
+        "count": len(awards),
+        "awards": [a.to_dict() for a in awards],
+        "caveat": "USAspending has documented completeness gaps — treat as directional.",
+    }
+
+
+@mcp.tool()
+def award_history(
+    recipient_name: str = "",
+    recipient_uei: str = "",
+    naics: str = "",
+    agency: str = "",
+    years_back: int = 5,
+    limit: int = 30,
+) -> dict[str, Any]:
+    """USAspending: award history for a specific recipient (optionally filtered)."""
+    if not (recipient_name or recipient_uei):
+        raise ValueError("specify recipient_name or recipient_uei")
+    try:
+        awards = usaspending.award_history(
+            recipient_name=recipient_name or None,
+            recipient_uei=recipient_uei or None,
+            naics=naics or None,
+            agency=agency or None,
+            years_back=years_back,
+            limit=limit,
+        )
+    except usaspending.USAspendingError as exc:
+        raise ValueError(str(exc)) from exc
+    return {"count": len(awards), "awards": [a.to_dict() for a in awards]}
+
+
+@mcp.tool()
+def top_recipients_by_naics(
+    naics: str,
+    years_back: int = 3,
+    limit: int = 10,
+) -> dict[str, Any]:
+    """USAspending: top recipients (by dollars) for a NAICS code over the window."""
+    try:
+        recipients = usaspending.top_recipients_by_naics(
+            naics=naics, years_back=years_back, limit=limit,
+        )
+    except usaspending.USAspendingError as exc:
+        raise ValueError(str(exc)) from exc
+    return {"count": len(recipients), "recipients": [r.to_dict() for r in recipients]}
+
+
+@mcp.tool()
+def get_cfr_section(title: int, section: str, part: str = "") -> dict[str, Any]:
+    """eCFR: fetch text of a CFR section. FAR = title 48; SBA size standards = title 13."""
+    try:
+        clause = ecfr.get_section(title=title, section=section, part=part or None)
+    except ecfr.ECFRError as exc:
+        raise ValueError(str(exc)) from exc
+    return clause.to_dict()
+
+
+@mcp.tool()
+def search_ecfr(query: str, title: int = 0, limit: int = 10) -> dict[str, Any]:
+    """eCFR: full-text search across CFR (optionally a single title)."""
+    try:
+        hits = ecfr.search(query=query, title=title or None, limit=limit)
+    except ecfr.ECFRError as exc:
+        raise ValueError(str(exc)) from exc
+    return {"count": len(hits), "hits": [h.to_dict() for h in hits]}
+
+
+@mcp.tool()
+def list_tasks(status: str = "", tag: str = "", type_filter: str = "") -> dict[str, Any]:
+    """Tasks spine: list business workstreams from `tasks/*.md`."""
+    tasks = tasks_lib.list_tasks(
+        status=status or None,
+        tag=tag or None,
+        type_filter=type_filter or None,
+    )
+    return {"count": len(tasks), "tasks": [t.to_dict() for t in tasks]}
+
+
+@mcp.tool()
+def next_unblocked(limit: int = 10) -> dict[str, Any]:
+    """Tasks spine: next-actionable workstreams per the never-hard-block rule."""
+    tasks = tasks_lib.next_unblocked(limit=limit)
+    return {"count": len(tasks), "tasks": [t.to_dict() for t in tasks]}
+
+
+@mcp.tool()
+def set_task_status(task_id: str, status: str, note: str = "") -> dict[str, Any]:
+    """Tasks spine: update a task's status and append an audit note."""
+    if status not in tasks_lib.VALID_STATUSES:
+        raise ValueError(f"Invalid status {status!r}; valid: {sorted(tasks_lib.VALID_STATUSES)}")
+    task = tasks_lib.set_status(task_id, status, note=note or None)
+    return task.to_dict()
+
+
+@mcp.tool()
+def validate_tasks() -> dict[str, Any]:
+    """Tasks spine: validate frontmatter across `tasks/*.md`."""
+    issues = tasks_lib.validate_all()
+    return {
+        "count": len(issues),
+        "issues": [i.to_dict() for i in issues],
+        "ok": all(i.severity != "error" for i in issues),
+    }
 
 
 if __name__ == "__main__":

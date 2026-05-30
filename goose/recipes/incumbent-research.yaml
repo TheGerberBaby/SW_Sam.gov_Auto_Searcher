@@ -1,0 +1,68 @@
+# incumbent-research.yaml — on-demand incumbent + award-history pull
+#
+# Run manually with parameters:
+#   goose run --recipe-source ./goose/recipes/incumbent-research.yaml \
+#     --param notice_id=NOTICE-ID
+
+name: incumbent-research
+description: |
+  For a SAM opportunity (by notice_id) or a NAICS/agency filter,
+  pull USAspending award history for the likely incumbent and
+  comparable past awards. Read-only. Output: a short markdown brief.
+
+extensions:
+  - technical-contract-research
+
+parameters:
+  notice_id:
+    type: string
+    description: SAM notice ID — recipe will load metadata from the local mirror
+    default: ""
+  naics:
+    type: string
+    description: NAICS to filter on if notice_id is empty
+    default: ""
+  agency:
+    type: string
+    description: Awarding agency name (USAspending format)
+    default: ""
+  years_back:
+    type: integer
+    default: 5
+  limit:
+    type: integer
+    default: 20
+
+instructions: |
+  Goal: identify likely incumbents and comparable past awards for an
+  opportunity, so Jeremy can size up the competition before deciding
+  to bid.
+
+  Branch on input:
+
+  - If `notice_id` is set, call `score_one_opportunity(notice_id=...,
+    profile="technical_services")` to capture the title + NAICS, then
+    pass that NAICS to `find_incumbents`.
+  - Otherwise use the `naics` / `agency` parameters directly.
+
+  Then:
+
+  1. Call `find_incumbents(naics=..., agency=..., years_back={{years_back}},
+     limit={{limit}})`. Group results by recipient.
+  2. For the top 3 recipients by total dollars, call
+     `award_history(recipient_name=..., naics=..., limit=10)`. Note
+     overlap with the agency in question.
+  3. Call `top_recipients_by_naics(naics=..., limit=10)` to round out
+     the picture.
+  4. Produce a markdown brief with:
+     - The opportunity context (title / NAICS / agency, if available)
+     - Top 3 likely incumbents, with rolled-up dollar totals + key
+       contracts
+     - "Things worth checking" (e.g., a recipient appearing on
+       Section 889 lists; expiring incumbent IDIQ; small-business
+       set-aside history)
+     - A clear caveat: USAspending has documented completeness gaps;
+       this is directional intel only.
+
+  Do NOT call any external API beyond USAspending / the local mirror.
+  Do NOT contact recipients or post anything publicly.

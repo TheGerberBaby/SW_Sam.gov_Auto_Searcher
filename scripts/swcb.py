@@ -31,15 +31,18 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 COMMANDS = {
-    "sync":      ("sync_bulk.py",      "Refresh the local SAM.gov SQLite mirror"),
-    "search":    ("search_bulk.py",    "Search the local SAM mirror"),
-    "live":      ("find_contracts.py", "Live SAM.gov API lookup"),
-    "score":     ("scoring.py",        "Score candidates against the technical-services rubric"),
-    "digest":    ("digest.py",         "Generate a daily digest report"),
-    "watch":     ("watchlist.py",      "Manage the opportunity watchlist + saved searches"),
-    "tasks":     ("tasks_lib.py",      "Manage the business-task spine (tasks/ directory)"),
-    "dashboard": ("dashboard.py",      "Launch the local web dashboard"),
-    "docs":      ("document_store.py", "Document index status / ingest / search"),
+    "sync":         ("sync_bulk.py",      "Refresh the local SAM.gov SQLite mirror"),
+    "search":       ("search_bulk.py",    "Search the local SAM mirror"),
+    "live":         ("find_contracts.py", "Live SAM.gov API lookup"),
+    "score":        ("scoring.py",        "Score candidates against the technical-services rubric"),
+    "digest":       ("digest.py",         "Generate a daily digest report"),
+    "watch":        ("watchlist.py",      "Manage the opportunity watchlist + saved searches"),
+    "tasks":        ("tasks_lib.py",      "Manage the business-task spine (tasks/ directory)"),
+    "incumbents":   ("usaspending.py",    "USAspending — incumbent / award-history analysis"),
+    "ecfr":         ("ecfr.py",           "eCFR — FAR/CFR clause grounding and search"),
+    "harness":      ("harness.py",        "Run the labeled-gold-set scoring harness"),
+    "dashboard":    ("dashboard.py",      "Launch the local web dashboard"),
+    "docs":         ("document_store.py", "Document index status / ingest / search"),
 }
 
 

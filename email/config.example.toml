@@ -1,0 +1,26 @@
+# Example mcp-email-server config — copy to email/config.toml and
+# fill in real values. NEVER commit the real config to Git.
+#
+# Reference: https://github.com/ai-zerolab/mcp-email-server
+
+[server]
+# Run as MCP stdio. Goose will spawn this as an extension.
+transport = "stdio"
+# read-only: omit the SMTP block entirely. Compose/send tools won't
+# be exposed.
+
+[[accounts]]
+name = "jeremy-gmail"
+imap_host = "imap.gmail.com"
+imap_port = 993
+imap_use_ssl = true
+imap_username = "jeremy.gerbert@gmail.com"
+# Use the env-var reference so the password never lands in this file.
+imap_password = "${EMAIL_APP_PASSWORD}"
+
+# Restrict the folders the agent can see. Pick the smallest viable
+# scope — typically a label/folder where SAM alert mail lands.
+allowed_folders = ["INBOX", "Sam.gov", "Procurement"]
+
+# Hard cap to avoid pulling thousands of messages per run.
+max_messages_per_fetch = 50

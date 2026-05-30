@@ -1,0 +1,68 @@
+# email-ingest.yaml — scaffold. NOT enabled by default.
+#
+# This recipe requires the IMAP MCP server to be installed and
+# configured first. See ../email/README.md for the
+# `ai-zerolab/mcp-email-server` setup and the app-password steps.
+#
+# Once that's done, add `imap-mail` to the `extensions:` list in
+# ~/.config/goose/config.yaml and uncomment the schedule below:
+#
+#   goose schedule add --schedule-id email-ingest --cron "*/30 * * * *" \
+#     --recipe-source ./goose/recipes/email-ingest.yaml
+
+name: email-ingest
+description: |
+  Poll the operator's mailbox for SAM.gov alert emails and agency
+  notices, parse out notice IDs / solicitation numbers, and append
+  matching items to the watchlist with status="tracking". Read-only
+  against the mailbox.
+
+extensions:
+  - technical-contract-research
+  - imap-mail        # provided by mcp-email-server; see email/README.md
+
+parameters:
+  search_folder:
+    type: string
+    default: INBOX
+  max_unread:
+    type: integer
+    default: 25
+  allowed_senders:
+    type: array
+    default:
+      - alerts@sam.gov
+      - noreply@sam.gov
+      - notices@sam.gov
+
+instructions: |
+  You are processing SAM.gov alert emails for Stormwind Contracting.
+
+  Steps:
+
+  1. Use the imap-mail extension to list unread messages in
+     `{{search_folder}}` from any address in `{{allowed_senders}}`,
+     newest first, capped at `{{max_unread}}` messages.
+  2. For each message:
+     - Extract solicitation numbers and SAM notice IDs (look for
+       URLs of the form `sam.gov/.../opp/<id>/view` and 32-char
+       hex strings).
+     - For each found notice ID:
+       a. Call `score_one_opportunity(notice_id=<id>)`.
+       b. If `score >= 4`, call `add_to_watchlist(notice_id=<id>,
+          status="tracking", score=..., band=..., lanes=...)`.
+       c. Append a note linking the email subject + date for
+          traceability.
+     - Mark the message read via imap-mail.
+  3. Produce a short markdown summary: emails scanned, notice IDs
+     extracted, items added to watchlist, items skipped because
+     `score < 4`.
+
+  Constraints:
+  - Do NOT send / reply / forward / move messages between folders.
+  - Do NOT click links in messages — extract IDs directly from the
+    email body text.
+  - Do NOT modify Inbox structure (no labels, no flags besides
+    read/unread).
+  - If imap-mail is unavailable, exit cleanly with an alert — do not
+    fall back to any other email mechanism.

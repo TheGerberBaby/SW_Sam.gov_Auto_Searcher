@@ -7,6 +7,8 @@ This project keeps a fast local mirror of SAM.gov opportunity data, stores publi
 > **v2 update.** The toolkit now includes a deterministic lead-scoring engine, a watchlist + saved-search store, a daily digest report generator, and a zero-dependency local web dashboard. See [V2_FEATURES.md](V2_FEATURES.md). The v1 snapshot is preserved at `..\SW_Contracting_Bots_v1_backup\` and at git tag `v1.0`.
 >
 > **Stage 1 spine.** [`PROFILE.md`](PROFILE.md) is now the living business profile. Business workstreams live as markdown task files in [`tasks/`](tasks/) and are managed via `swcb tasks ...`. The scoring rubrics moved to [`criteria/`](criteria/). See [STAGE1_SPINE.md](STAGE1_SPINE.md) and [ROADMAP_REVIEW.md](ROADMAP_REVIEW.md).
+>
+> **Stages 2–5.** USAspending incumbent analysis, eCFR clause grounding, Goose recipes, IMAP email scaffold, phone-accessible dashboard with HTTP Basic + Ask command palette, labeled-gold-set harness (macro-F1 + Cohen's κ), and a DSPy GEPA scaffold for self-evolving criteria. See [STAGES_2_5.md](STAGES_2_5.md).
 
 ## System Schematic
 
@@ -165,6 +167,7 @@ Full v2 reference: [V2_FEATURES.md](V2_FEATURES.md).
 - [PROFILE.md](PROFILE.md) is the living Stormwind Contracting business profile (start here).
 - [STAGE1_SPINE.md](STAGE1_SPINE.md) explains the markdown-task spine and `swcb tasks` CLI.
 - [ROADMAP_REVIEW.md](ROADMAP_REVIEW.md) is the agent policy for "what should I work on next?"
+- [STAGES_2_5.md](STAGES_2_5.md) walks through USAspending, eCFR, Goose recipes, email scaffold, phone dashboard, harness, and DSPy GEPA.
 - [V2_FEATURES.md](V2_FEATURES.md) covers the v2 scoring engine, watchlist, daily digest, dashboard, and CLI.
 - [ARCHITECTURE.md](ARCHITECTURE.md) has the internal architecture notes.
 - [SOP.md](SOP.md) has daily operating recipes.

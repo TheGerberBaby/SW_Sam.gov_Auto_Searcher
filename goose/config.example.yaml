@@ -1,0 +1,58 @@
+# Example Goose extension config — paste into
+# ~/.config/goose/config.yaml (Linux/Mac) or
+# %APPDATA%\Goose\config.yaml (Windows)
+#
+# Adjust the `cwd` and `command` paths to match your install.
+
+extensions:
+  # The SW Contracting Bots FastMCP server. Exposes:
+  #   v1: search_opportunities, ingest_public_document, search_documents,
+  #       document_index_status, get_technical_services_profile,
+  #       get_elastic_lead_profile
+  #   v2: list_scoring_profiles, score_opportunities, score_one_opportunity,
+  #       generate_daily_digest, add_to_watchlist, list_watchlist,
+  #       update_watchlist_status, add_watchlist_note, save_search,
+  #       list_saved_searches, run_saved_search
+  #   v2.2 (Stages 2+): find_incumbents, award_history, get_far_clause,
+  #       search_ecfr, list_tasks, next_unblocked, set_task_status
+  technical-contract-research:
+    type: stdio
+    command: python
+    args:
+      - C:\Users\dflaj\OneDrive\Desktop\projects\SW_Contracting_Bots\scripts\mcp_server.py
+    env:
+      USER_TIMEZONE: America/New_York
+      # Required only for document ingestion (Elasticsearch + optional
+      # OpenAI embeddings):
+      # ELASTICSEARCH_URL: http://localhost:9200
+      # OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+
+# Optional: IMAP MCP for SAM alert mail (Stage 2.4). Uncomment and
+# fill in the app password once you've installed
+# `ai-zerolab/mcp-email-server` per email/README.md.
+#
+# imap-mail:
+#   type: stdio
+#   command: uvx
+#   args: [mcp-email-server@latest, stdio]
+#   env:
+#     EMAIL_HOST: imap.gmail.com
+#     EMAIL_PORT: "993"
+#     EMAIL_USE_SSL: "true"
+#     EMAIL_USERNAME: jeremy.gerbert@gmail.com
+#     EMAIL_PASSWORD: ${env:EMAIL_APP_PASSWORD}
+#     EMAIL_READ_ONLY: "true"
+#     EMAIL_ALLOWED_FOLDERS: "INBOX,Sam.gov,Procurement"
+
+# Recipe-level providers. Goose's ACP passthrough lets you route to
+# Claude Code or Codex as the model executing the recipe. Replace
+# with whichever you actually have wired.
+providers:
+  claude-code:
+    type: acp
+    command: claude
+    args: [code, --mcp]
+  codex:
+    type: acp
+    command: codex
+    args: [exec]

@@ -1,0 +1,66 @@
+# sam-hunt.yaml — nightly SAM.gov sweep + scored digest
+#
+# Suggested schedule: 06:00 local
+#   goose schedule add --schedule-id sam-hunt-daily --cron "0 6 * * *" \
+#     --recipe-source ./goose/recipes/sam-hunt.yaml
+
+name: sam-hunt
+description: |
+  Refresh the local SAM.gov mirror, run the v2 scorer over the most
+  recent notices, write a markdown + HTML digest, and surface the
+  top hits per capability lane. Read-only against external state.
+  Does NOT email, file, or auto-submit.
+
+extensions:
+  - technical-contract-research
+
+retry:
+  attempts: 2
+  backoff_seconds: 60
+
+parameters:
+  profile:
+    type: string
+    default: technical_services
+    description: Scoring profile (technical_services | elastic_only)
+  days:
+    type: integer
+    default: 2
+    description: Look at notices posted in the last N days
+  min_score:
+    type: integer
+    default: 3
+    description: Minimum score to include in the digest
+  watchlist_threshold:
+    type: integer
+    default: 7
+    description: |
+      Score at or above which the recipe will auto-add the notice to
+      the watchlist (status=tracking). Conservative on purpose.
+
+instructions: |
+  You are running an unattended SAM.gov hunt for Stormwind Contracting.
+
+  Steps:
+
+  1. Read `PROFILE.md` once for context. Do not narrate it back.
+  2. Call `generate_daily_digest(profile={{profile}}, days={{days}},
+     min_score={{min_score}}, write=true)`. Capture the returned
+     `html_path`, `markdown_path`, `scanned`, and `shown` values.
+  3. From the returned results, pick every notice with
+     `score >= {{watchlist_threshold}}` that is NOT already in the
+     watchlist (check via `list_watchlist`). For each, call
+     `add_to_watchlist(notice_id=..., status="tracking", score=...,
+     band=..., lanes=...)`. Skip if already present.
+  4. Produce a short markdown report with:
+     - Generated-at timestamp
+     - Profile + window
+     - `scanned / shown` counts
+     - Top 5 results (title, band, lanes, score)
+     - Any items auto-added to the watchlist
+     - Paths to the markdown + HTML digest files
+
+  Conservative defaults:
+  - Do not call `update_watchlist_status` or mutate `tasks/`.
+  - Do not run live SAM API calls; rely on the local mirror.
+  - If `scanned == 0`, surface that as an alert — the mirror is stale.
