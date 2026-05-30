@@ -1,20 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="800" viewBox="0 0 1300 800" role="img" aria-labelledby="title desc">
-  <title id="title">SW SAM.gov Auto Searcher system schematic</title>
-  <desc id="desc">Box and arrow schematic: public SAM.gov, USAspending, and eCFR sources feed local Python scripts (sync, search, document index, scoring, digest, watchlist) into SQLite, Elasticsearch, and a watchlist store, surfaced through a single-page operator dashboard and an MCP server for Codex and Claude, producing digests, a pursuit tracker, and evidence-backed research decisions.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" role="img" aria-labelledby="title desc">
+  <title id="title">SW SAM.gov Auto Searcher data-flow schematic</title>
+  <desc id="desc">Data-flow diagram in five stages: acquire (public sources to ingest scripts), store (SQLite, Elasticsearch, API caches, watchlist DB), analyze (search, scoring, digest), surface (local dashboard and MCP server to Codex/Claude), and decide (daily digest and research decision). Solid arrows are data flow, dashed blue arrows are reads, dotted purple arrows are guidance and on-demand calls.</desc>
   <defs>
     <style>
       .page { fill: #f7fafc; }
-      .title { font: 700 32px "Segoe UI", Arial, sans-serif; fill: #102033; }
+      .title { font: 700 30px "Segoe UI", Arial, sans-serif; fill: #102033; }
       .subtitle { font: 400 15px "Segoe UI", Arial, sans-serif; fill: #506070; }
       .lane { fill: #ffffff; stroke: #d5dde8; stroke-width: 2; }
-      .laneTitle { font: 700 16px "Segoe UI", Arial, sans-serif; fill: #223044; letter-spacing: .2px; }
-      .box { stroke-width: 2; }
+      .laneTitle { font: 700 15px "Segoe UI", Arial, sans-serif; fill: #223044; }
+      .stageCap { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #6b7f99; letter-spacing: .4px; }
       .boxText { font: 700 14px "Segoe UI", Arial, sans-serif; fill: #111827; }
       .boxSub { font: 400 11.5px "Segoe UI", Arial, sans-serif; fill: #4b5563; }
-      .label { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #415168; }
+      .label { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #34506e; }
+      .rlabel { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #2f6fb0; }
+      .glabel { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #7c3aed; }
       .small { font: 400 11px "Segoe UI", Arial, sans-serif; fill: #64748b; }
-      .arrow { fill: none; stroke: #314866; stroke-width: 2.4; marker-end: url(#arrowHead); }
-      .softArrow { fill: none; stroke: #8b5cf6; stroke-width: 2; stroke-dasharray: 7 7; marker-end: url(#arrowHeadSoft); }
+      .legendText { font: 400 12px "Segoe UI", Arial, sans-serif; fill: #34506e; }
+      .badgeNum { font: 700 13px "Segoe UI", Arial, sans-serif; fill: #ffffff; }
+      .arrow { fill: none; stroke: #314866; stroke-width: 2.4; marker-end: url(#aHead); }
+      .readArrow { fill: none; stroke: #2f6fb0; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#aHeadRead); }
+      .guideArrow { fill: none; stroke: #8b5cf6; stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; marker-end: url(#aHeadGuide); }
       .source { fill: #e8f2ff; stroke: #4f8edb; }
       .engine { fill: #ecfdf5; stroke: #17a36b; }
       .store { fill: #fff7ed; stroke: #f08a24; }
@@ -22,172 +27,128 @@
       .out { fill: #fdf2f8; stroke: #db4f92; }
       .guide { fill: #f8fafc; stroke: #94a3b8; }
     </style>
-    <marker id="arrowHead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#314866"/>
-    </marker>
-    <marker id="arrowHeadSoft" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#8b5cf6"/>
-    </marker>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity=".10"/>
-    </filter>
+    <marker id="aHead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#314866"/></marker>
+    <marker id="aHeadRead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#2f6fb0"/></marker>
+    <marker id="aHeadGuide" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#8b5cf6"/></marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity=".10"/></filter>
   </defs>
 
-  <rect class="page" width="1300" height="800"/>
-  <text class="title" x="40" y="54">SW SAM.gov Auto Searcher</text>
-  <text class="subtitle" x="40" y="82">Discovery + document evidence + deterministic scoring + single-page operator dashboard + AI research</text>
+  <rect class="page" width="1500" height="820"/>
+  <text class="title" x="40" y="50">SW SAM.gov Auto Searcher — data flow</text>
+  <text class="subtitle" x="40" y="76">Read left to right: 1 acquire → 2 store → 3 analyze → 4 surface → 5 decide</text>
 
-  <!-- inter-lane flow labels -->
-  <text class="label" x="272" y="106" text-anchor="middle">ingest / fetch</text>
-  <text class="label" x="524" y="106" text-anchor="middle">write</text>
-  <text class="label" x="776" y="106" text-anchor="middle">read</text>
-  <text class="label" x="1028" y="106" text-anchor="middle">produce</text>
+  <!-- ===== legend ===== -->
+  <rect class="lane" x="980" y="28" width="490" height="84" rx="14" filter="url(#shadow)"/>
+  <text class="laneTitle" x="998" y="50" font-size="13">How to read this</text>
+  <path class="arrow" d="M998,64 L1040,64"/><text class="legendText" x="1050" y="68">solid = data flow (write · serve · produce)</text>
+  <path class="readArrow" d="M998,84 L1040,84"/><text class="legendText" x="1050" y="88">dashed blue = read / query a store</text>
+  <path class="guideArrow" d="M998,104 L1040,104"/><text class="legendText" x="1050" y="108">dotted purple = guidance &amp; on-demand calls</text>
 
-  <!-- ===== Public Sources ===== -->
-  <rect class="lane" x="34" y="116" width="224" height="524" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="58" y="148">Public Sources</text>
+  <!-- ===== stage captions + numbered markers (gap centers) ===== -->
+  <text class="stageCap" x="142" y="126" text-anchor="middle">ACQUIRE</text>
+  <text class="stageCap" x="630" y="126" text-anchor="middle">STORE</text>
+  <text class="stageCap" x="871" y="126" text-anchor="middle">ANALYZE</text>
+  <text class="stageCap" x="1115" y="126" text-anchor="middle">SURFACE</text>
+  <text class="stageCap" x="1359" y="126" text-anchor="middle">DECIDE</text>
+  <circle cx="261" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="261" y="164" text-anchor="middle">1</text>
+  <circle cx="505" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="505" y="164" text-anchor="middle">2</text>
+  <circle cx="749" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="749" y="164" text-anchor="middle">3</text>
+  <circle cx="993" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="993" y="164" text-anchor="middle">4</text>
+  <circle cx="1237" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="1237" y="164" text-anchor="middle">5</text>
 
-  <rect class="box source" x="56" y="174" width="180" height="72" rx="13"/>
-  <text class="boxText" x="74" y="202">SAM.gov Extract</text>
-  <text class="boxSub" x="74" y="222">daily public CSV</text>
+  <!-- ===== Lane 1: Public Sources ===== -->
+  <rect class="lane" x="30" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
+  <text class="laneTitle" x="50" y="170">Public Sources</text>
+  <rect class="box source" x="50" y="186" width="178" height="62" rx="12"/><text class="boxText" x="66" y="212">SAM.gov Extract</text><text class="boxSub" x="66" y="232">daily public CSV</text>
+  <rect class="box source" x="50" y="258" width="178" height="62" rx="12"/><text class="boxText" x="66" y="284">SAM.gov API</text><text class="boxSub" x="66" y="304">live query</text>
+  <rect class="box source" x="50" y="330" width="178" height="62" rx="12"/><text class="boxText" x="66" y="356">Solicitation Files</text><text class="boxSub" x="66" y="376">PDF · DOCX · HTML</text>
+  <rect class="box source" x="50" y="402" width="178" height="62" rx="12"/><text class="boxText" x="66" y="428">USAspending API</text><text class="boxSub" x="66" y="448">federal awards</text>
+  <rect class="box source" x="50" y="474" width="178" height="62" rx="12"/><text class="boxText" x="66" y="500">eCFR API</text><text class="boxSub" x="66" y="520">FAR &amp; CFR text</text>
 
-  <rect class="box source" x="56" y="258" width="180" height="72" rx="13"/>
-  <text class="boxText" x="74" y="286">SAM.gov API</text>
-  <text class="boxSub" x="74" y="306">live fallback search</text>
+  <!-- ===== Lane 2: Ingest ===== -->
+  <rect class="lane" x="274" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
+  <text class="laneTitle" x="294" y="170">Ingest scripts</text>
+  <rect class="box engine" x="294" y="186" width="178" height="64" rx="12"/><text class="boxText" x="310" y="212">sync_bulk.py</text><text class="boxSub" x="310" y="232">download &amp; normalize</text>
+  <rect class="box engine" x="294" y="330" width="178" height="64" rx="12"/><text class="boxText" x="310" y="356">document_store.py</text><text class="boxSub" x="310" y="376">extract · chunk · index</text>
+  <rect class="box engine" x="294" y="474" width="178" height="64" rx="12"/><text class="boxText" x="310" y="500">usaspending · ecfr</text><text class="boxSub" x="310" y="520">fetch + cache</text>
 
-  <rect class="box source" x="56" y="342" width="180" height="72" rx="13"/>
-  <text class="boxText" x="74" y="370">Solicitation Files</text>
-  <text class="boxSub" x="74" y="390">PDF · DOCX · HTML</text>
+  <!-- ===== Lane 3: Stores ===== -->
+  <rect class="lane" x="518" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
+  <text class="laneTitle" x="538" y="170">Local Stores</text>
+  <rect class="box store" x="538" y="176" width="178" height="74" rx="12"/><text class="boxText" x="554" y="202">SQLite Mirror</text><text class="boxSub" x="554" y="221">data/contracts.db</text><text class="boxSub" x="554" y="238">opportunities</text>
+  <rect class="box store" x="538" y="262" width="178" height="74" rx="12"/><text class="boxText" x="554" y="288">Elasticsearch</text><text class="boxSub" x="554" y="307">documents_v1</text><text class="boxSub" x="554" y="324">evidence chunks</text>
+  <rect class="box store" x="538" y="348" width="178" height="62" rx="12"/><text class="boxText" x="554" y="374">API caches</text><text class="boxSub" x="554" y="394">usaspending + eCFR</text>
+  <rect class="box store" x="538" y="470" width="178" height="74" rx="12"/><text class="boxText" x="554" y="496">Watchlist DB</text><text class="boxSub" x="554" y="515">data/watchlist.db</text><text class="boxSub" x="554" y="532">pursuits + digests</text>
 
-  <rect class="box source" x="56" y="426" width="180" height="72" rx="13"/>
-  <text class="boxText" x="74" y="454">USAspending API</text>
-  <text class="boxSub" x="74" y="474">federal award history</text>
+  <!-- ===== Lane 4: Analyze (top corridor kept clear for cross-lane reads) ===== -->
+  <rect class="lane" x="762" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
+  <text class="laneTitle" x="782" y="170">Analyze</text>
+  <rect class="box engine" x="782" y="300" width="178" height="66" rx="12"/><text class="boxText" x="798" y="326">search_bulk.py</text><text class="boxSub" x="798" y="346">+ find_contracts.py</text>
+  <rect class="box engine" x="782" y="384" width="178" height="66" rx="12"/><text class="boxText" x="798" y="410">scoring.py</text><text class="boxSub" x="798" y="430">deterministic rubric</text>
+  <rect class="box engine" x="782" y="470" width="178" height="66" rx="12"/><text class="boxText" x="798" y="496">digest.py</text><text class="boxSub" x="798" y="516">rank + write report</text>
 
-  <rect class="box source" x="56" y="510" width="180" height="72" rx="13"/>
-  <text class="boxText" x="74" y="538">eCFR API</text>
-  <text class="boxSub" x="74" y="558">FAR &amp; CFR clauses</text>
+  <!-- ===== Lane 5: Surfaces ===== -->
+  <rect class="lane" x="1006" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
+  <text class="laneTitle" x="1026" y="170">Operator Surfaces</text>
+  <rect class="box surface" x="1026" y="186" width="178" height="92" rx="12"/><text class="boxText" x="1042" y="214">Local Dashboard</text><text class="boxSub" x="1042" y="234">single-page system tree</text><text class="boxSub" x="1042" y="251">leads · pursuits · setup</text>
+  <rect class="box surface" x="1026" y="300" width="178" height="84" rx="12"/><text class="boxText" x="1042" y="328">MCP Server</text><text class="boxSub" x="1042" y="347">technical-contract-research</text><text class="boxSub" x="1042" y="364">reads SQLite + ES</text>
+  <rect class="box surface" x="1026" y="430" width="178" height="70" rx="12"/><text class="boxText" x="1042" y="458">Codex / Claude</text><text class="boxSub" x="1042" y="478">AI clients via MCP</text>
 
-  <!-- ===== Local Engine ===== -->
-  <rect class="lane" x="286" y="116" width="224" height="524" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="310" y="148">Local Engine (Python)</text>
-
-  <rect class="box engine" x="308" y="170" width="180" height="64" rx="13"/>
-  <text class="boxText" x="326" y="196">sync_bulk.py</text>
-  <text class="boxSub" x="326" y="216">download &amp; normalize</text>
-
-  <rect class="box engine" x="308" y="246" width="180" height="64" rx="13"/>
-  <text class="boxText" x="326" y="272">search_bulk.py</text>
-  <text class="boxSub" x="326" y="292">+ find_contracts.py (live)</text>
-
-  <rect class="box engine" x="308" y="322" width="180" height="64" rx="13"/>
-  <text class="boxText" x="326" y="348">document_store.py</text>
-  <text class="boxSub" x="326" y="368">extract · chunk · index</text>
-
-  <rect class="box engine" x="308" y="398" width="180" height="64" rx="13"/>
-  <text class="boxText" x="326" y="424">scoring.py</text>
-  <text class="boxSub" x="326" y="444">deterministic lead rubric</text>
-
-  <rect class="box engine" x="308" y="474" width="180" height="64" rx="13"/>
-  <text class="boxText" x="326" y="500">digest + watchlist</text>
-  <text class="boxSub" x="326" y="520">ranked report + pursuits</text>
-
-  <rect class="box engine" x="308" y="550" width="180" height="64" rx="13"/>
-  <text class="boxText" x="326" y="576">usaspending · ecfr</text>
-  <text class="boxSub" x="326" y="596">incumbents + clauses</text>
-
-  <!-- ===== Local Storage ===== -->
-  <rect class="lane" x="538" y="116" width="224" height="524" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="562" y="148">Local Storage</text>
-
-  <rect class="box store" x="560" y="174" width="180" height="80" rx="13"/>
-  <text class="boxText" x="578" y="202">SQLite Mirror</text>
-  <text class="boxSub" x="578" y="222">data/contracts.db</text>
-  <text class="boxSub" x="578" y="240">structured opportunities</text>
-
-  <rect class="box store" x="560" y="282" width="180" height="80" rx="13"/>
-  <text class="boxText" x="578" y="310">Elasticsearch</text>
-  <text class="boxSub" x="578" y="330">stormwind_documents_v1</text>
-  <text class="boxSub" x="578" y="348">evidence chunks</text>
-
-  <rect class="box store" x="560" y="390" width="180" height="80" rx="13"/>
-  <text class="boxText" x="578" y="418">Watchlist DB</text>
-  <text class="boxSub" x="578" y="438">data/watchlist.db</text>
-  <text class="boxSub" x="578" y="456">pursuits + fit scores</text>
-
-  <rect class="box store" x="560" y="498" width="180" height="80" rx="13"/>
-  <text class="boxText" x="578" y="526">API caches</text>
-  <text class="boxSub" x="578" y="546">usaspending + eCFR</text>
-  <text class="boxSub" x="578" y="564">refreshed on demand</text>
-
-  <!-- ===== Operator Surfaces ===== -->
-  <rect class="lane" x="790" y="116" width="224" height="524" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="814" y="148">Operator Surfaces</text>
-
-  <rect class="box surface" x="812" y="176" width="180" height="92" rx="13"/>
-  <text class="boxText" x="830" y="206">Local Dashboard</text>
-  <text class="boxSub" x="830" y="226">single-page system tree</text>
-  <text class="boxSub" x="830" y="244">leads · pursuits · setup</text>
-
-  <rect class="box surface" x="812" y="300" width="180" height="92" rx="13"/>
-  <text class="boxText" x="830" y="330">MCP Server</text>
-  <text class="boxSub" x="830" y="350">technical-contract-research</text>
-  <text class="boxSub" x="830" y="368">controlled tool surface</text>
-
-  <rect class="box surface" x="812" y="424" width="180" height="72" rx="13"/>
-  <text class="boxText" x="830" y="452">Codex / Claude</text>
-  <text class="boxSub" x="830" y="472">AI clients via MCP</text>
-
-  <!-- ===== Outputs ===== -->
-  <rect class="lane" x="1042" y="116" width="224" height="524" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="1066" y="148">Outputs</text>
-
-  <rect class="box out" x="1064" y="176" width="180" height="80" rx="13"/>
-  <text class="boxText" x="1082" y="204">Daily Digest</text>
-  <text class="boxSub" x="1082" y="224">ranked markdown + HTML</text>
-  <text class="boxSub" x="1082" y="242">data/digests/</text>
-
-  <rect class="box out" x="1064" y="300" width="180" height="80" rx="13"/>
-  <text class="boxText" x="1082" y="328">Pursuit Tracker</text>
-  <text class="boxSub" x="1082" y="348">stages: tracking → won</text>
-  <text class="boxSub" x="1082" y="366">your fit ratings</text>
-
-  <rect class="box out" x="1064" y="424" width="180" height="80" rx="13"/>
-  <text class="boxText" x="1082" y="452">Research Decision</text>
-  <text class="boxSub" x="1082" y="472">assess · monitor · reject</text>
-  <text class="boxSub" x="1082" y="490">evidence-backed</text>
+  <!-- ===== Lane 6: Outputs ===== -->
+  <rect class="lane" x="1250" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
+  <text class="laneTitle" x="1270" y="170">Outputs</text>
+  <rect class="box out" x="1270" y="200" width="178" height="80" rx="12"/><text class="boxText" x="1286" y="228">Daily Digest</text><text class="boxSub" x="1286" y="248">ranked markdown + HTML</text><text class="boxSub" x="1286" y="265">data/digests/</text>
+  <rect class="box out" x="1270" y="420" width="178" height="80" rx="12"/><text class="boxText" x="1286" y="448">Research Decision</text><text class="boxSub" x="1286" y="468">assess · monitor · reject</text><text class="boxSub" x="1286" y="485">evidence-backed</text>
 
   <!-- ===== Guidance lane ===== -->
-  <rect class="lane" x="286" y="672" width="980" height="104" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="310" y="704">Research Guidance (read by the engine and AI clients)</text>
+  <rect class="lane" x="274" y="704" width="1194" height="92" rx="18" filter="url(#shadow)"/>
+  <text class="laneTitle" x="294" y="732">Research Guidance — read by the engine and the AI clients</text>
+  <rect class="box guide" x="300" y="746" width="150" height="38" rx="10"/><text class="boxSub" x="316" y="770">PROFILE.md</text>
+  <rect class="box guide" x="470" y="746" width="236" height="38" rx="10"/><text class="boxSub" x="486" y="770">criteria/ — fit &amp; exclusion rules</text>
+  <rect class="box guide" x="726" y="746" width="180" height="38" rx="10"/><text class="boxSub" x="742" y="770">tasks/ — roadmap spine</text>
+  <rect class="box guide" x="926" y="746" width="150" height="38" rx="10"/><text class="boxSub" x="942" y="770">prompts/*.md</text>
+  <rect class="box guide" x="1096" y="746" width="180" height="38" rx="10"/><text class="boxSub" x="1112" y="770">adapters/skills/*</text>
 
-  <rect class="box guide" x="310" y="720" width="150" height="40" rx="11"/>
-  <text class="boxSub" x="328" y="745">PROFILE.md</text>
+  <!-- ============ ARROWS ============ -->
+  <!-- 1. ACQUIRE: sources -> ingest -->
+  <path class="arrow" d="M228,217 L294,217"/><text class="label" x="240" y="208">CSV</text>
+  <path class="arrow" d="M228,361 L294,361"/><text class="label" x="236" y="352">files</text>
+  <path class="arrow" d="M228,433 L294,500"/>
+  <path class="arrow" d="M228,505 L294,512"/><text class="label" x="232" y="468">JSON</text>
+  <!-- live API fallback: SAM.gov API bypasses the mirror, straight to search -->
+  <path class="readArrow" d="M228,289 L256,289 L256,146 L850,146 L850,300"/>
+  <text class="rlabel" x="540" y="140" text-anchor="middle">live API fallback (skips the mirror)</text>
 
-  <rect class="box guide" x="476" y="720" width="210" height="40" rx="11"/>
-  <text class="boxSub" x="494" y="745">criteria/ — fit &amp; exclusion rules</text>
+  <!-- 2. STORE: ingest -> stores -->
+  <path class="arrow" d="M472,217 L538,213"/><text class="label" x="482" y="206">write opps</text>
+  <path class="arrow" d="M472,361 L538,299"/><text class="label" x="478" y="344">index</text>
+  <path class="arrow" d="M472,505 L538,385"/><text class="label" x="480" y="455">cache</text>
 
-  <rect class="box guide" x="702" y="720" width="180" height="40" rx="11"/>
-  <text class="boxSub" x="720" y="745">tasks/ — roadmap spine</text>
+  <!-- 3. ANALYZE: stores -> analyze (reads) -->
+  <path class="readArrow" d="M716,222 L782,322"/><text class="rlabel" x="722" y="276">read</text>
+  <path class="readArrow" d="M716,236 L782,408"/><text class="rlabel" x="724" y="372">read opps</text>
+  <path class="arrow" d="M871,450 L871,470"/><text class="label" x="878" y="464">rank</text>
 
-  <rect class="box guide" x="898" y="720" width="140" height="40" rx="11"/>
-  <text class="boxSub" x="916" y="745">prompts/*.md</text>
+  <!-- 4. SURFACE: analyze -> dashboard (results) ; stores -> MCP (reads) -->
+  <path class="arrow" d="M960,326 L1026,222"/><text class="label" x="966" y="268">results</text>
+  <path class="arrow" d="M960,410 L1026,244"/>
+  <path class="arrow" d="M960,500 L1026,262"/>
+  <path class="readArrow" d="M716,290 L1026,308"/><text class="rlabel" x="852" y="288" text-anchor="middle">search_documents</text>
+  <!-- dashboard runs the engine on demand (scan / score) -->
+  <path class="guideArrow" d="M1026,256 L968,386"/><text class="glabel" x="958" y="300" text-anchor="end">scan on demand</text>
+  <!-- MCP -> AI clients -->
+  <path class="arrow" d="M1115,384 L1115,430"/><text class="label" x="1122" y="412">tools</text>
 
-  <rect class="box guide" x="1054" y="720" width="180" height="40" rx="11"/>
-  <text class="boxSub" x="1072" y="745">adapters/skills/*</text>
+  <!-- 5. DECIDE: surfaces -> outputs -->
+  <path class="arrow" d="M1204,224 L1270,234"/><text class="label" x="1210" y="214">report</text>
+  <path class="arrow" d="M1204,465 L1270,452"/><text class="label" x="1210" y="430">decision</text>
 
-  <!-- ===== flow arrows ===== -->
-  <path class="arrow" d="M236 380 L308 380"/>
-  <path class="arrow" d="M488 380 L560 380"/>
-  <path class="arrow" d="M740 380 L812 380"/>
-  <path class="arrow" d="M992 380 L1064 380"/>
+  <!-- feedback: digest writes pursuits ; dashboard reads/writes the watchlist -->
+  <path class="arrow" d="M782,503 L716,500"/><text class="label" x="724" y="490">save pursuit</text>
+  <path class="readArrow" d="M1026,268 L993,292 L993,624 L636,624 L636,546"/>
+  <text class="rlabel" x="812" y="618" text-anchor="middle">dashboard reads / writes pursuits</text>
 
-  <!-- MCP feeds the AI clients -->
-  <path class="arrow" d="M902 392 L902 424"/>
-  <text class="label" x="916" y="412">tools</text>
-
-  <!-- guidance steers the engine and AI clients -->
-  <path class="softArrow" d="M398 672 C398 640 398 626 398 616"/>
-  <text class="label" x="300" y="660">profiles steer scoring &amp; rejection</text>
-  <path class="softArrow" d="M900 672 C900 600 900 540 900 496"/>
-  <text class="small" x="912" y="640">read by Codex / Claude</text>
+  <!-- guidance steers scoring and the AI clients -->
+  <path class="guideArrow" d="M560,746 C560,580 740,470 782,418"/><text class="glabel" x="556" y="690">rules steer scoring &amp; rejection</text>
+  <path class="guideArrow" d="M1150,746 L1150,500"/><text class="glabel" x="1160" y="640">read by Codex / Claude</text>
 </svg>
