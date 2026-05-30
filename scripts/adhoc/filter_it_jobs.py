@@ -5,7 +5,8 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-DB = Path(__file__).resolve().parent.parent / "data" / "contracts.db"
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+DB = PROJECT_DIR / "data" / "contracts.db"
 TODAY = date(2026, 5, 27)
 MIN_DEADLINE = TODAY + timedelta(days=2)
 

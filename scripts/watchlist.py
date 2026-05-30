@@ -16,6 +16,7 @@ This module is import-safe (no side effects on import). Callers receive a
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -28,6 +29,7 @@ LOCAL_TZ = ZoneInfo("America/New_York")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB = PROJECT_ROOT / "data" / "watchlist.db"
+VALID_ENVS = {"prod", "dev"}
 
 VALID_STATUSES = {
     "tracking",     # newly added, monitoring
@@ -58,6 +60,7 @@ CREATE TABLE IF NOT EXISTS watchlist (
     status              TEXT NOT NULL DEFAULT 'tracking',
     score               INTEGER,
     band                TEXT,
+    human_score         INTEGER,
     lanes               TEXT,            -- JSON array
     notes               TEXT,
     added_at            TEXT NOT NULL,
@@ -118,6 +121,7 @@ class WatchlistEntry:
     status: str
     score: int | None
     band: str | None
+    human_score: int | None
     lanes: list[str]
     notes: str | None
     added_at: str
@@ -136,6 +140,7 @@ class WatchlistEntry:
             "status": self.status,
             "score": self.score,
             "band": self.band,
+            "human_score": self.human_score,
             "lanes": self.lanes,
             "notes": self.notes,
             "added_at": self.added_at,
@@ -174,14 +179,41 @@ def _now() -> str:
     return datetime.now(LOCAL_TZ).isoformat(timespec="seconds")
 
 
+def normalize_runtime_env(env: str | None = None) -> str:
+    value = (env or os.environ.get("SWCB_ENV") or "prod").strip().lower()
+    if value not in VALID_ENVS:
+        raise ValueError(f"Invalid runtime env {value!r}. Valid: {sorted(VALID_ENVS)}")
+    return value
+
+
+def db_path_for_env(env: str | None = None) -> Path:
+    runtime_env = normalize_runtime_env(env)
+    if runtime_env == "prod":
+        return DEFAULT_DB
+    return PROJECT_ROOT / "data" / runtime_env / "watchlist.db"
+
+
 class Store:
     """Wrapper around the watchlist SQLite database."""
 
-    def __init__(self, db_path: Path | str | None = None) -> None:
-        self.db_path = Path(db_path) if db_path else DEFAULT_DB
+    def __init__(self, db_path: Path | str | None = None, env: str | None = None) -> None:
+        self.env = normalize_runtime_env(env) if db_path is None else None
+        self.db_path = Path(db_path) if db_path else db_path_for_env(self.env)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._conn() as conn:
+            self._migrate(conn)
             conn.executescript(SCHEMA)
+
+    def _migrate(self, conn: sqlite3.Connection) -> None:
+        """Apply small additive migrations for existing local databases."""
+        tables = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'watchlist'"
+        ).fetchall()
+        if not tables:
+            return
+        cols = {row["name"] for row in conn.execute("PRAGMA table_info(watchlist)").fetchall()}
+        if "human_score" not in cols:
+            conn.execute("ALTER TABLE watchlist ADD COLUMN human_score INTEGER")
 
     @contextmanager
     def _conn(self) -> Iterator[sqlite3.Connection]:
@@ -305,6 +337,27 @@ class Store:
                 "INSERT INTO watchlist_events (notice_id, event_type, detail, created_at) VALUES (?, ?, ?, ?)",
                 (notice_id, "note", note, now),
             )
+
+    def set_human_score(self, notice_id: str, human_score: int | None, note: str | None = None) -> WatchlistEntry | None:
+        if human_score is not None and not 1 <= human_score <= 5:
+            raise ValueError("human_score must be between 1 and 5")
+        now = _now()
+        detail = f"human_score={human_score}" if human_score is not None else "human_score cleared"
+        if note:
+            detail += f"; {note}"
+        with self._conn() as conn:
+            cur = conn.execute(
+                "UPDATE watchlist SET human_score = ?, updated_at = ? WHERE notice_id = ?",
+                (human_score, now, notice_id),
+            )
+            if cur.rowcount == 0:
+                return None
+            conn.execute(
+                "INSERT INTO watchlist_events (notice_id, event_type, detail, created_at) VALUES (?, ?, ?, ?)",
+                (notice_id, "human_scored", detail, now),
+            )
+            row = conn.execute("SELECT * FROM watchlist WHERE notice_id = ?", (notice_id,)).fetchone()
+        return _row_to_entry(row)
 
     def list_watchlist(
         self,
@@ -436,6 +489,7 @@ def _row_to_entry(row: sqlite3.Row | None) -> WatchlistEntry:
         status=row["status"],
         score=row["score"],
         band=row["band"],
+        human_score=row["human_score"],
         lanes=lanes,
         notes=row["notes"],
         added_at=row["added_at"],

@@ -1,7 +1,7 @@
 # Stage 1 — The Markdown Spine
 
 This stage delivers what the deep-research report
-([`C:\Users\dflaj\Downloads\Research Report.pdf`](C:\Users\dflaj\Downloads\Research%20Report.pdf))
+([`docs/research/government-contracting-os-report.pdf`](research/government-contracting-os-report.pdf))
 calls **Layer 0 — State (spine)**: a Git-versioned, agent-readable
 business state in plain markdown.
 
@@ -9,11 +9,11 @@ business state in plain markdown.
 
 | Artifact | Role |
 | --- | --- |
-| [`PROFILE.md`](PROFILE.md) | The living business identity for Stormwind Contracting — operator, NAICS, lanes, certs held/pending, exclusions, tooling stack. Read this first. |
-| [`tasks/`](tasks/) | One markdown file per business workstream (cert / registration / bid / infrastructure). YAML frontmatter for status, priority, dependencies. |
-| [`criteria/`](criteria/) | The editable scoring rubrics — the "knobs" the v2 scoring engine + the future promptfoo/GEPA harness read. Now contains `TECHNICAL_SERVICES_PROFILE.md`, `ELASTIC_LEAD_PROFILE.md`, `SAM_Lead_Selection_Logic.md`. |
-| [`ROADMAP_REVIEW.md`](ROADMAP_REVIEW.md) | The agent policy file. "Never hard-block on one item." Read whenever asked "what's next?" |
-| [`scripts/tasks_lib.py`](scripts/tasks_lib.py) | The parser + CLI. Stdlib-only — no PyYAML, no extra installs. |
+| [`PROFILE.md`](../PROFILE.md) | The living business identity for Stormwind Contracting — operator, NAICS, lanes, certs held/pending, exclusions, tooling stack. Read this first. |
+| [`tasks/`](../tasks/) | One markdown file per business workstream (cert / registration / bid / infrastructure). YAML frontmatter for status, priority, dependencies. |
+| [`criteria/`](../criteria/) | The editable scoring rubrics — the "knobs" the v2 scoring engine + the future promptfoo/GEPA harness read. Now contains `TECHNICAL_SERVICES_PROFILE.md`, `ELASTIC_LEAD_PROFILE.md`, `SAM_Lead_Selection_Logic.md`. |
+| [`ROADMAP_REVIEW.md`](../ROADMAP_REVIEW.md) | The agent policy file. "Never hard-block on one item." Read whenever asked "what's next?" |
+| [`scripts/tasks_lib.py`](../scripts/tasks_lib.py) | The parser + CLI. Stdlib-only — no PyYAML, no extra installs. |
 
 ## How the pieces relate
 
@@ -117,7 +117,7 @@ These all stack on top of the spine cleanly once it exists.
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Stage 1 adds 11 tests in [`tests/test_tasks_lib.py`](tests/test_tasks_lib.py)
+Stage 1 adds 11 tests in [`tests/test_tasks_lib.py`](../tests/test_tasks_lib.py)
 covering frontmatter parsing, status mutation, dependency-graph
 unblocked computation, validation, cycle detection, and priority
 ordering. 38/38 total tests pass.

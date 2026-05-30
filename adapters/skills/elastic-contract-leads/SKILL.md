@@ -18,7 +18,7 @@ Project root:
 Before ranking opportunities, read:
 
 - `criteria/ELASTIC_LEAD_PROFILE.md` for fit, exclusions, terms, and scoring.
-- `DOCUMENT_INDEX.md` when a public solicitation attachment is available.
+- `docs/DOCUMENT_INDEX.md` when a public solicitation attachment is available.
 - `scripts/search_bulk.py` or its usage output before running structured
   discovery if flags are unclear.
 

@@ -18,6 +18,7 @@ data/*.db-*
 data/*.sqlite*
 data/ContractOpportunitiesFullCSV.csv*
 data/*.csv
+data/exports/
 data/last_sync.txt
 data/document-cache/
 

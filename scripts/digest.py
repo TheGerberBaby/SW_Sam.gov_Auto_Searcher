@@ -35,11 +35,21 @@ from scoring import (  # noqa: E402
     available_profiles,
     bulk_score,
 )
-from watchlist import Store  # noqa: E402
+from watchlist import Store, normalize_runtime_env  # noqa: E402
 
 PROJECT_ROOT = SCRIPT_DIR.parent
 DB_PATH = PROJECT_ROOT / "data" / "contracts.db"
-REPORTS_DIR = PROJECT_ROOT / "data" / "digests"
+PROD_REPORTS_DIR = PROJECT_ROOT / "data" / "digests"
+
+
+def reports_dir_for_env(env: str | None = None) -> Path:
+    runtime_env = normalize_runtime_env(env)
+    if runtime_env == "prod":
+        return PROD_REPORTS_DIR
+    return PROJECT_ROOT / "data" / runtime_env / "digests"
+
+
+REPORTS_DIR = reports_dir_for_env("prod")
 
 LANE_LABELS = {
     "elastic_search": "Elastic / Search",
@@ -85,6 +95,96 @@ def _group_by_lane(scored: list[ScoreResult]) -> dict[str, list[ScoreResult]]:
     return grouped
 
 
+def _work_location(opp: dict[str, Any]) -> str:
+    city = (opp.get("pop_city") or "").strip()
+    state = (opp.get("pop_state") or "").strip()
+    if city and state:
+        return f"{city}, {state}"
+    if state:
+        return state
+    text = f"{opp.get('title') or ''} {opp.get('description') or ''}".lower()
+    if "remote" in text or "virtual" in text:
+        return "Remote/virtual mentioned"
+    return "Not listed"
+
+
+def _delivery_read(opp: dict[str, Any], result: ScoreResult) -> dict[str, Any]:
+    text = " ".join(str(opp.get(k) or "") for k in (
+        "title", "description", "type", "set_aside", "naics_code", "pop_city", "pop_state"
+    )).lower()
+    risk_terms = [
+        "top secret", "ts/sci", "secret clearance", "facility clearance",
+        "24/7", "twenty-four", "nationwide", "multiple locations",
+        "staff augmentation", "full time equivalent", "labor category",
+        "enterprise-wide", "managed services",
+    ]
+    solo_terms = [
+        "one-time", "single", "rfq", "request for quote", "combined synopsis",
+        "data cleanup", "documentation", "assessment", "repair", "break/fix",
+        "report", "migration", "configuration", "training",
+    ]
+    notice_type = (opp.get("type") or "").lower()
+    risk_hits = [term for term in risk_terms if term in text]
+    solo_hits = [term for term in solo_terms if term in text]
+    if risk_hits:
+        return {
+            "label": "Likely teaming",
+            "detail": f"Verify scope; flags include {', '.join(risk_hits[:2])}.",
+            "level": "team",
+        }
+    if "sources sought" in notice_type or "rfi" in notice_type or "special notice" in notice_type:
+        return {
+            "label": "Monitor / shape",
+            "detail": "Market research notice; useful for positioning, not a bid yet.",
+            "level": "monitor",
+        }
+    if result.score >= 5 and solo_hits:
+        return {
+            "label": "Plausibly solo",
+            "detail": f"Metadata suggests bounded work: {', '.join(solo_hits[:2])}.",
+            "level": "solo",
+        }
+    if result.score >= 3:
+        return {
+            "label": "Solo or light help",
+            "detail": "Looks worth checking the SOW/PWS for team size, clearance, and schedule.",
+            "level": "light_help",
+        }
+    return {
+        "label": "Maybe / verify",
+        "detail": "Weak metadata fit; inspect documents before spending time.",
+        "level": "monitor",
+    }
+
+
+def _digest_items(scored: list[ScoreResult], opportunities: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for result in scored:
+        opp = opportunities.get(result.notice_id, {})
+        delivery_read = _delivery_read(opp, result)
+        items.append({
+            **opp,
+            "notice_id": result.notice_id,
+            "title": result.title,
+            "score": result.score,
+            "band": result.band,
+            "lanes": result.lanes,
+            "work_location": _work_location(opp),
+            "delivery_read": delivery_read,
+            "reasons": [r.to_dict() for r in result.reasons],
+        })
+    return items
+
+
+def _lane_counts(scored: list[ScoreResult]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for result in scored:
+        for lane in result.lanes or ["unclassified"]:
+            label = LANE_LABELS.get(lane, lane)
+            counts[label] = counts.get(label, 0) + 1
+    return counts
+
+
 def render_markdown(
     profile: str,
     days: int,
@@ -116,11 +216,14 @@ def render_markdown(
             naics = opp.get("naics_code") or "-"
             set_aside = opp.get("set_aside") or "-"
             agency = opp.get("department") or "-"
+            delivery_read = _delivery_read(opp, result)
             link = opp.get("link") or ""
             link_md = f"[notice]({link})" if link else ""
             lines.append(f"### [{result.band.upper()} +{result.score}] {result.title}")
             lines.append("")
             lines.append(f"- **Agency:** {agency}")
+            lines.append(f"- **Work location:** {_work_location(opp)}")
+            lines.append(f"- **Delivery read:** {delivery_read['label']} — {delivery_read['detail']}")
             lines.append(f"- **NAICS:** {naics} · **Set-aside:** {set_aside}")
             lines.append(f"- **Posted:** {opp.get('posted_date') or '-'} · **Response due:** {deadline}")
             lines.append(f"- **Notice ID:** `{result.notice_id}` {link_md}")
@@ -189,6 +292,7 @@ def render_html(
             badge = f"<span class='badge' style='background:{color}'>{band.upper()} +{result.score}</span>"
             link = opp.get("link") or ""
             link_html = f"<a href='{html.escape(link)}' target='_blank' rel='noopener'>open notice</a>" if link else ""
+            delivery_read = _delivery_read(opp, result)
             reasons_html = "".join(
                 f"<span class='{'neg' if r.points < 0 else ''}'>"
                 f"{('+' if r.points > 0 else '')}{r.points} {html.escape(r.kind)}: {html.escape(r.detail)}</span>"
@@ -198,6 +302,8 @@ def render_html(
                 f"<div class='card'>"
                 f"<div class='title'>{badge}{html.escape(result.title)}</div>"
                 f"<div class='meta-row'><b>Agency:</b> {html.escape(opp.get('department') or '-')} / {html.escape(opp.get('sub_tier') or '-')}</div>"
+                f"<div class='meta-row'><b>Work location:</b> {html.escape(_work_location(opp))} · "
+                f"<b>Delivery read:</b> {html.escape(delivery_read['label'])} — {html.escape(delivery_read['detail'])}</div>"
                 f"<div class='meta-row'><b>NAICS:</b> {html.escape(opp.get('naics_code') or '-')} · "
                 f"<b>Set-aside:</b> {html.escape(opp.get('set_aside') or '-')} · "
                 f"<b>Type:</b> {html.escape(opp.get('type') or '-')}</div>"
@@ -217,9 +323,12 @@ def generate_digest(
     min_score: int = 2,
     limit_scan: int = 2000,
     write: bool = True,
+    env: str | None = None,
 ) -> dict[str, Any]:
     if profile not in available_profiles():
         raise ValueError(f"Unknown profile {profile!r}. Available: {available_profiles()}")
+    runtime_env = normalize_runtime_env(env)
+    reports_dir = reports_dir_for_env(runtime_env)
     generated_at = datetime.now(LOCAL_TZ)
     rows = _query_recent(days=days, limit=limit_scan)
     scored_all = bulk_score(rows, profile=profile)
@@ -233,35 +342,39 @@ def generate_digest(
     md_path: Path | None = None
     html_path: Path | None = None
     if write:
-        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        reports_dir.mkdir(parents=True, exist_ok=True)
         stamp = generated_at.strftime("%Y%m%d_%H%M%S")
-        md_path = REPORTS_DIR / f"digest_{profile}_{stamp}.md"
-        html_path = REPORTS_DIR / f"digest_{profile}_{stamp}.html"
+        md_path = reports_dir / f"digest_{profile}_{stamp}.md"
+        html_path = reports_dir / f"digest_{profile}_{stamp}.html"
         md_path.write_text(markdown, encoding="utf-8")
         html_path.write_text(html_doc, encoding="utf-8")
 
         try:
-            store = Store()
+            store = Store(env=runtime_env)
             store.record_digest_run(
                 profile=profile,
                 candidates_scanned=len(rows),
                 candidates_shown=len(scored),
                 report_path=str(html_path),
-                summary=f"{len(scored)} of {len(rows)} scored at >= {min_score}",
+                summary=f"{len(scored)} leads matched the fit threshold from {len(rows)} notices checked.",
             )
         except Exception as exc:  # noqa: BLE001
             print(f"WARN: failed to record digest run: {exc}", file=sys.stderr)
 
     return {
         "generated_at": generated_at.isoformat(),
+        "env": runtime_env,
         "profile": profile,
         "scanned": len(rows),
         "shown": len(scored),
+        "summary": f"{len(scored)} leads matched the fit threshold from {len(rows)} notices checked.",
+        "lane_counts": _lane_counts(scored),
         "markdown": markdown,
         "html": html_doc,
         "markdown_path": str(md_path) if md_path else None,
         "html_path": str(html_path) if html_path else None,
         "results": [s.to_dict() for s in scored],
+        "items": _digest_items(scored, opportunities),
     }
 
 
@@ -271,6 +384,8 @@ def _cli() -> None:
     parser.add_argument("--days", type=int, default=3, help="Look at notices posted in the last N days (default 3).")
     parser.add_argument("--min-score", dest="min_score", type=int, default=2)
     parser.add_argument("--limit-scan", dest="limit_scan", type=int, default=2000)
+    parser.add_argument("--env", choices=["prod", "dev"], default=None,
+                        help="Runtime state to use for digest history (default: SWCB_ENV or prod).")
     parser.add_argument("--no-write", action="store_true", help="Don't write files; print markdown to stdout.")
     args = parser.parse_args()
 
@@ -280,6 +395,7 @@ def _cli() -> None:
         min_score=args.min_score,
         limit_scan=args.limit_scan,
         write=not args.no_write,
+        env=args.env,
     )
     if args.no_write:
         print(result["markdown"])

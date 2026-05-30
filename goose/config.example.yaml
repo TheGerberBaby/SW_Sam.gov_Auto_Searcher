@@ -19,7 +19,7 @@ extensions:
     type: stdio
     command: python
     args:
-      - C:\Users\dflaj\OneDrive\Desktop\projects\SW_Contracting_Bots\scripts\mcp_server.py
+      - <PROJECT_DIR>\scripts\mcp_server.py
     env:
       USER_TIMEZONE: America/New_York
       # Required only for document ingestion (Elasticsearch + optional

@@ -6,9 +6,8 @@ store**, a **daily digest generator**, a **local web dashboard**, and a
 
 Everything in v1 still works the same way. v2 modules are additive.
 
-The v1 source-tree snapshot lives at
-`C:\Users\dflaj\OneDrive\Desktop\projects\SW_Contracting_Bots_v1_backup\`,
-and the git tag `v1.0` points at the last v1 commit.
+The git tag `v1.0` points at the last v1 commit. A local source-tree
+snapshot can be kept outside this repository when needed.
 
 ---
 

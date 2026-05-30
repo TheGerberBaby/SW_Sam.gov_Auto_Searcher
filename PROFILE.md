@@ -1,7 +1,8 @@
 <!--
 Living business profile for Stormwind Contracting. This file is the
 "spine" of the project per the Government-Contracting OS plan
-(V2_FEATURES.md → Stage 1 → see STAGE1_SPINE.md). It is read by
+([docs/V2_FEATURES.md](docs/V2_FEATURES.md) -> Stage 1 -> see
+[docs/STAGE1_SPINE.md](docs/STAGE1_SPINE.md)). It is read by
 agents (Claude Code, Codex) and humans to ground every other decision.
 
 Edit freely. Status fields use a fixed vocabulary:
@@ -122,7 +123,7 @@ Detailed status, dependencies, and next-actions live in the
 
 ## Operating tooling
 
-- **Project root:** `C:\Users\dflaj\OneDrive\Desktop\projects\SW_Contracting_Bots`
+- **Project root:** repository root (`<PROJECT_DIR>` on a local machine)
 - Local SAM.gov SQLite mirror — [scripts/sync_bulk.py](scripts/sync_bulk.py)
 - Local Elasticsearch document evidence index — [scripts/document_store.py](scripts/document_store.py)
 - Lead scoring engine + watchlist (v2) — [scripts/scoring.py](scripts/scoring.py), [scripts/watchlist.py](scripts/watchlist.py)
@@ -130,6 +131,7 @@ Detailed status, dependencies, and next-actions live in the
 - Unified CLI — `swcb` ([scripts/swcb.py](scripts/swcb.py))
 - FastMCP server for Claude Code / Codex / Claude Desktop — [scripts/mcp_server.py](scripts/mcp_server.py)
 - This spine — [PROFILE.md](PROFILE.md), [tasks/](tasks/), [criteria/](criteria/), [ROADMAP_REVIEW.md](ROADMAP_REVIEW.md)
+- Long-form docs — [docs/](docs/)
 
 ## How agents should use this file
 

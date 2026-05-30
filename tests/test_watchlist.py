@@ -76,6 +76,24 @@ class WatchlistTests(unittest.TestCase):
         self.assertIn("first note", entry.notes or "")
         self.assertIn("second note", entry.notes or "")
 
+    def test_human_score_records_feedback(self):
+        self.store.add_to_watchlist(self._opp())
+        entry = self.store.set_human_score("N-1", 5, note="realistic first bid")
+        self.assertEqual(entry.human_score, 5)
+        events = self.store.events("N-1")
+        self.assertTrue(any(e["event_type"] == "human_scored" for e in events))
+        with self.assertRaises(ValueError):
+            self.store.set_human_score("N-1", 6)
+
+    def test_runtime_env_paths_are_separate(self):
+        prod_path = watchlist.db_path_for_env("prod")
+        dev_path = watchlist.db_path_for_env("dev")
+        self.assertNotEqual(prod_path, dev_path)
+        self.assertEqual(prod_path.name, "watchlist.db")
+        self.assertIn("dev", dev_path.parts)
+        with self.assertRaises(ValueError):
+            watchlist.db_path_for_env("staging")
+
     def test_saved_search_roundtrip(self):
         saved = self.store.save_search(
             "elastic-weekly",

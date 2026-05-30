@@ -26,7 +26,7 @@ cycles on a blocked workstream.
 ## Research Rules
 
 - Start with `PROFILE.md`, `criteria/TECHNICAL_SERVICES_PROFILE.md`,
-  `DOCUMENT_INDEX.md`, and the relevant script documentation before
+  `docs/DOCUMENT_INDEX.md`, and the relevant script documentation before
   conducting a lead search.
 - Prefer the `technical_contract_research` MCP tools when available:
   `search_opportunities`, `document_index_status`, `ingest_public_document`,

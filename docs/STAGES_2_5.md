@@ -69,10 +69,10 @@ FAR is Title 48; SBA size standards are Title 13 Part 121.
 ## 2.3 Goose — scheduled / unattended orchestration
 
 Install [Goose](https://github.com/aaif-goose/goose) separately
-(it's a Rust binary, not bundled here). See [`goose/README.md`](goose/README.md)
+(it's a Rust binary, not bundled here). See [`goose/README.md`](../goose/README.md)
 for the install + extension-config flow.
 
-Drop the block from [`goose/config.example.yaml`](goose/config.example.yaml)
+Drop the block from [`goose/config.example.yaml`](../goose/config.example.yaml)
 into your Goose config to register the FastMCP server in this repo
 as a Goose extension. Then schedule any of the recipes:
 
@@ -88,10 +88,10 @@ Recipes shipped:
 
 | Recipe | What it does | Auto-mutates external state? |
 | --- | --- | --- |
-| [`sam-hunt.yaml`](goose/recipes/sam-hunt.yaml) | Score recent notices, write digest, surface top hits | Adds high-score notices to the watchlist (`status=tracking`). |
-| [`roadmap-review.yaml`](goose/recipes/roadmap-review.yaml) | Summarize unblocked / unknown / blocked tasks | No — never mutates `tasks/*.md`. |
-| [`incumbent-research.yaml`](goose/recipes/incumbent-research.yaml) | USAspending pull for a notice or NAICS | No. |
-| [`email-ingest.yaml`](goose/recipes/email-ingest.yaml) | Process SAM alert emails into watchlist (scaffold — needs IMAP MCP) | Marks messages read. Never sends. |
+| [`sam-hunt.yaml`](../goose/recipes/sam-hunt.yaml) | Score recent notices, write digest, surface top hits | Adds high-score notices to the watchlist (`status=tracking`). |
+| [`roadmap-review.yaml`](../goose/recipes/roadmap-review.yaml) | Summarize unblocked / unknown / blocked tasks | No — never mutates `tasks/*.md`. |
+| [`incumbent-research.yaml`](../goose/recipes/incumbent-research.yaml) | USAspending pull for a notice or NAICS | No. |
+| [`email-ingest.yaml`](../goose/recipes/email-ingest.yaml) | Process SAM alert emails into watchlist (scaffold — needs IMAP MCP) | Marks messages read. Never sends. |
 
 All recipes are deliberately conservative: nothing auto-submits, auto-emails,
 or auto-mutates `tasks/`. Tighten or relax in your fork.
@@ -101,9 +101,9 @@ or auto-mutates `tasks/`. Tighten or relax in your fork.
 ## 2.4 IMAP email scaffold
 
 A configuration scaffold for the [`ai-zerolab/mcp-email-server`](https://github.com/ai-zerolab/mcp-email-server)
-recommended by the report. See [`email/README.md`](email/README.md)
+recommended by the report. See [`email/README.md`](../email/README.md)
 for the full app-password + read-only setup, then uncomment the
-`imap-mail` extension block in [`goose/config.example.yaml`](goose/config.example.yaml)
+`imap-mail` extension block in [`goose/config.example.yaml`](../goose/config.example.yaml)
 and enable the `email-ingest.yaml` schedule.
 
 The boundary: agents may **read** SAM alert mail and mark messages
@@ -160,10 +160,10 @@ evaluation on top.
 
 The pattern (from Karpathy autoresearch):
 
-- Locked **scorer**: [`scripts/harness.py`](scripts/harness.py)
+- Locked **scorer**: [`scripts/harness.py`](../scripts/harness.py)
 - Locked **labels**: `harness/gold/*.csv`
-- The **program** (the editable knob): [`criteria/*.md`](criteria/) +
-  the keyword tables in [`scripts/scoring.py`](scripts/scoring.py)
+- The **program** (the editable knob): [`criteria/*.md`](../criteria/) +
+  the keyword tables in [`scripts/scoring.py`](../scripts/scoring.py)
 - One comparable **metric**: macro-F1 + Cohen's κ
 
 ### Gold-set format
@@ -207,7 +207,7 @@ via `tests.csv` + `__expected` — no migration needed.
 
 ## 5 — DSPy GEPA self-evolution scaffold
 
-[`harness/dspy_gepa_scaffold.py`](harness/dspy_gepa_scaffold.py).
+[`harness/dspy_gepa_scaffold.py`](../harness/dspy_gepa_scaffold.py).
 
 GEPA (Genetic-Pareto reflective prompt evolution) takes your labeled
 gold set, asks an LLM to classify each opportunity, and evolves the

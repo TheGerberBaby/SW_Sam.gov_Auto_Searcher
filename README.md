@@ -4,11 +4,11 @@ Local tools for finding, filtering, and researching public SAM.gov technical-ser
 
 This project keeps a fast local mirror of SAM.gov opportunity data, stores public solicitation documents in a searchable evidence index, and exposes the workflow to AI clients through a Dockerized MCP server.
 
-> **v2 update.** The toolkit now includes a deterministic lead-scoring engine, a watchlist + saved-search store, a daily digest report generator, and a zero-dependency local web dashboard. See [V2_FEATURES.md](V2_FEATURES.md). The v1 snapshot is preserved at `..\SW_Contracting_Bots_v1_backup\` and at git tag `v1.0`.
+> **v2 update.** The toolkit now includes a deterministic lead-scoring engine, a watchlist + saved-search store, a daily digest report generator, and a zero-dependency local web dashboard. See [docs/V2_FEATURES.md](docs/V2_FEATURES.md). The portable v1 reference is git tag `v1.0`.
 >
-> **Stage 1 spine.** [`PROFILE.md`](PROFILE.md) is now the living business profile. Business workstreams live as markdown task files in [`tasks/`](tasks/) and are managed via `swcb tasks ...`. The scoring rubrics moved to [`criteria/`](criteria/). See [STAGE1_SPINE.md](STAGE1_SPINE.md) and [ROADMAP_REVIEW.md](ROADMAP_REVIEW.md).
+> **Stage 1 spine.** [`PROFILE.md`](PROFILE.md) is now the living business profile. Business workstreams live as markdown task files in [`tasks/`](tasks/) and are managed via `swcb tasks ...`. The scoring rubrics moved to [`criteria/`](criteria/). See [docs/STAGE1_SPINE.md](docs/STAGE1_SPINE.md) and [ROADMAP_REVIEW.md](ROADMAP_REVIEW.md).
 >
-> **Stages 2–5.** USAspending incumbent analysis, eCFR clause grounding, Goose recipes, IMAP email scaffold, phone-accessible dashboard with HTTP Basic + Ask command palette, labeled-gold-set harness (macro-F1 + Cohen's κ), and a DSPy GEPA scaffold for self-evolving criteria. See [STAGES_2_5.md](STAGES_2_5.md).
+> **Stages 2-5.** USAspending incumbent analysis, eCFR clause grounding, Goose recipes, IMAP email scaffold, phone-accessible dashboard with HTTP Basic + Ask command palette, labeled-gold-set harness (macro-F1 + Cohen's kappa), and a DSPy GEPA scaffold for self-evolving criteria. See [docs/STAGES_2_5.md](docs/STAGES_2_5.md).
 
 ## System Schematic
 
@@ -25,6 +25,18 @@ This project keeps a fast local mirror of SAM.gov opportunity data, stores publi
 - Gives Codex and Claude an MCP tool surface for structured opportunity search plus document evidence retrieval.
 - Keeps lead research focused on technical services: Elastic/OpenSearch, AI search and RAG, observability/SIEM, AI/data services, and VTC/network engineering.
 - **v2:** scores every candidate against the operator's rubric, tracks pursuits in a watchlist, generates ranked daily digest reports, and ships a local web dashboard.
+
+## Repository Layout
+
+| Path | Purpose |
+| --- | --- |
+| [`scripts/`](scripts/) | CLI tools, MCP server, dashboard, scoring, digest, document index, and API helpers. |
+| [`scripts/adhoc/`](scripts/adhoc/) | Historical one-off filters kept out of the main workflow. |
+| [`criteria/`](criteria/) | Technical-services and Elastic scoring profiles. |
+| [`tasks/`](tasks/) | Git-tracked business roadmap spine. |
+| [`docs/`](docs/) | Architecture, setup, operating guides, stage notes, and source research material. |
+| [`data/`](data/) | Local runtime state only; databases, caches, digests, and exports are ignored by Git. |
+| [`adapters/skills/`](adapters/skills/) | Codex skills for lead research and document evidence workflows. |
 
 ## Quick Start
 
@@ -104,7 +116,7 @@ The MCP server exposes:
 | `ingest_public_document` | Ingest a public HTTPS solicitation document. |
 | `search_documents` | Retrieve source-backed document evidence. |
 
-See [MCP_SETUP.md](MCP_SETUP.md) for Codex, Claude Code, and Claude Desktop registration.
+See [docs/MCP_SETUP.md](docs/MCP_SETUP.md) for Codex, Claude Code, and Claude Desktop registration.
 
 ## Research Flow
 
@@ -129,7 +141,7 @@ The repository is set up to keep local and sensitive artifacts out of GitHub:
 - `.env`
 - `data/contracts.db`
 - downloaded SAM.gov CSV extracts
-- generated lead-export CSV/XLSX files
+- generated lead-export CSV/XLSX files, including local copies under `data/exports/`
 - Python caches and local runtime files
 - private or controlled solicitation attachments
 
@@ -152,6 +164,12 @@ python scripts/digest.py --days 3 --min-score 3
 # Launch the local web dashboard
 python scripts/dashboard.py
 
+# Production dashboard: real pursuits and digest history
+python scripts/dashboard.py --env prod
+
+# Development dashboard: separate watchlist/digest state under data/dev/
+python scripts/dashboard.py --env dev
+
 # Unified CLI dispatcher
 .\swcb.bat search "Elasticsearch"
 .\swcb.bat score --profile elastic_only --min-score 4
@@ -160,16 +178,16 @@ python scripts/dashboard.py
 .\swcb.bat dashboard
 ```
 
-Full v2 reference: [V2_FEATURES.md](V2_FEATURES.md).
+Full v2 reference: [docs/V2_FEATURES.md](docs/V2_FEATURES.md).
 
 ## More Detail
 
 - [PROFILE.md](PROFILE.md) is the living Stormwind Contracting business profile (start here).
-- [STAGE1_SPINE.md](STAGE1_SPINE.md) explains the markdown-task spine and `swcb tasks` CLI.
+- [docs/STAGE1_SPINE.md](docs/STAGE1_SPINE.md) explains the markdown-task spine and `swcb tasks` CLI.
 - [ROADMAP_REVIEW.md](ROADMAP_REVIEW.md) is the agent policy for "what should I work on next?"
-- [STAGES_2_5.md](STAGES_2_5.md) walks through USAspending, eCFR, Goose recipes, email scaffold, phone dashboard, harness, and DSPy GEPA.
-- [V2_FEATURES.md](V2_FEATURES.md) covers the v2 scoring engine, watchlist, daily digest, dashboard, and CLI.
-- [ARCHITECTURE.md](ARCHITECTURE.md) has the internal architecture notes.
-- [SOP.md](SOP.md) has daily operating recipes.
-- [DOCUMENT_INDEX.md](DOCUMENT_INDEX.md) explains Elasticsearch document ingest and retrieval.
-- [MCP_SETUP.md](MCP_SETUP.md) covers AI-client MCP registration.
+- [docs/STAGES_2_5.md](docs/STAGES_2_5.md) walks through USAspending, eCFR, Goose recipes, email scaffold, phone dashboard, harness, and DSPy GEPA.
+- [docs/V2_FEATURES.md](docs/V2_FEATURES.md) covers the v2 scoring engine, watchlist, daily digest, dashboard, and CLI.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the internal architecture notes.
+- [docs/SOP.md](docs/SOP.md) has daily operating recipes.
+- [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) explains Elasticsearch document ingest and retrieval.
+- [docs/MCP_SETUP.md](docs/MCP_SETUP.md) covers AI-client MCP registration.

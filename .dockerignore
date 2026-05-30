@@ -7,6 +7,7 @@ __pycache__
 .venv
 venv
 data/
+docs/research/*.pdf
 *.xlsx
 *.csv
 *.log

@@ -11,10 +11,10 @@
 ## 1. What this is
 
 **Active lead profile:** the operator pursues technical services. Use
-[`criteria/TECHNICAL_SERVICES_PROFILE.md`](criteria/TECHNICAL_SERVICES_PROFILE.md) for current
+[`criteria/TECHNICAL_SERVICES_PROFILE.md`](../criteria/TECHNICAL_SERVICES_PROFILE.md) for current
 opportunity research. It covers Elastic/search, AI/RAG/data, observability and
 security analytics, plus VTC/network integration. Use
-[`criteria/ELASTIC_LEAD_PROFILE.md`](criteria/ELASTIC_LEAD_PROFILE.md) for Elastic-only sweeps.
+[`criteria/ELASTIC_LEAD_PROFILE.md`](../criteria/ELASTIC_LEAD_PROFILE.md) for Elastic-only sweeps.
 
 Two ways to search SAM.gov contract opportunities:
 

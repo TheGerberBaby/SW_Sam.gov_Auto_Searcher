@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY scripts ./scripts
 COPY criteria ./criteria
-COPY DOCUMENT_INDEX.md ./
+COPY docs/DOCUMENT_INDEX.md ./docs/DOCUMENT_INDEX.md
 COPY prompts ./prompts
 
 CMD ["python", "scripts/mcp_server.py"]
