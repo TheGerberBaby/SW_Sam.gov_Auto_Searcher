@@ -2718,6 +2718,17 @@ tr:hover{background:rgba(255,255,255,.03);}
   .detail-grid,.filters{grid-template-columns:1fr;}
   .tree-lbl{font-size:.82rem;}
 }
+
+/* ---- getting-started banner ---- */
+.starter{margin-top:1.3rem;border-radius:18px;padding:1.5px;background:var(--grad);box-shadow:var(--shadow-md);}
+.starter-main{background:var(--bg-2);border-radius:16.5px;padding:1.05rem 1.25rem;}
+html[data-theme="light"] .starter-main{background:#ffffff;}
+.starter-title{font-size:1.08rem;font-weight:850;margin-bottom:.3rem;}
+.starter-text{color:var(--ink-2);font-size:.93rem;line-height:1.5;max-width:74ch;}
+.starter-text b{color:var(--ink);}
+.starter-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.85rem;}
+.starter-preview{margin-top:.85rem;max-height:300px;overflow:auto;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:11px;padding:.85rem 1rem;font-size:.8rem;line-height:1.5;white-space:pre-wrap;color:var(--ink-2);font-family:ui-monospace,Consolas,monospace;}
+html[data-theme="light"] .starter-preview{background:#f1f3fb;}
 </style>
 </head>
 <body>
@@ -2744,6 +2755,18 @@ tr:hover{background:rgba(255,255,255,.03);}
     <div class="hero-stat"><b id="heroPursuits">--</b><span>pursuits tracked</span></div>
     <div class="hero-stat"><b id="heroTasks">--</b><span>next steps ready</span></div>
     <div class="hero-stat"><b id="heroProfiles">--</b><span>scoring profiles</span></div>
+  </div>
+  <div class="starter" id="starterBanner">
+    <div class="starter-main">
+      <div class="starter-title">👋 New here? Set up your profile in ~2 minutes</div>
+      <div class="starter-text">Paste this prompt into <b>Claude</b> or <b>Codex</b>. It interviews you one question at a time, then writes your Stormwind profile and scoring rules for you — no files to edit by hand.</div>
+      <div class="starter-actions">
+        <button class="primary" onclick="copyOnboardingPrompt()">📋 Copy onboarding prompt</button>
+        <button class="ghost" onclick="togglePromptPreview()">Preview prompt</button>
+        <button class="ghost" onclick="dismissStarter()">Hide</button>
+      </div>
+      <pre class="starter-preview" id="starterPreview" style="display:none"></pre>
+    </div>
   </div>
 </div>
 
@@ -2868,7 +2891,7 @@ tr:hover{background:rgba(255,255,255,.03);}
         <span class="node-chevron">⌄</span>
       </button>
       <div class="node-body"><div class="node-inner"><div class="node-pad">
-        <div class="actions"><button class="ghost" onclick="copyStarterPrompt()">📋 Copy AI starter prompt</button><span class="hint" style="align-self:center">Paste into Claude or Codex to point it at this project.</span></div>
+        <div class="actions"><button class="ghost" onclick="copyOnboardingPrompt()">📋 Copy onboarding prompt</button><button class="ghost" onclick="copyStarterPrompt()">📋 Copy research prompt</button><span class="hint" style="align-self:center">Paste into Claude or Codex.</span></div>
         <div class="artifact-grid">
           <div class="artifact-card"><div class="title">Business profile</div><div class="meta-row">Identity, location focus, NAICS, set-aside posture.</div><div class="meta-row"><code>PROFILE.md</code></div><div class="card-actions"><button class="primary" onclick="openArtifact('PROFILE.md')">Open</button><button class="ghost" onclick="copyPath('PROFILE.md')">Copy path</button></div></div>
           <div class="artifact-card"><div class="title">Technical-services fit rules</div><div class="meta-row">Capability lanes, vocabulary, exclusions, scoring.</div><div class="meta-row"><code>criteria/TECHNICAL_SERVICES_PROFILE.md</code></div><div class="card-actions"><button class="primary" onclick="openArtifact('criteria/TECHNICAL_SERVICES_PROFILE.md')">Open</button><button class="ghost" onclick="copyPath('criteria/TECHNICAL_SERVICES_PROFILE.md')">Copy path</button></div></div>
@@ -2936,6 +2959,35 @@ function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
 function showToast(msg){const t=document.createElement('div');t.textContent=msg;t.className='toast';document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
 async function copyText(text,label='Copied'){await navigator.clipboard.writeText(text);showToast(label);}
 function copyStarterPrompt(){const text=`Use the technical-contract-research MCP tools and the Stormwind Contracting profile in ${PROJECT_ROOT}. Start by reading PROFILE.md, criteria/TECHNICAL_SERVICES_PROFILE.md, docs/DOCUMENT_INDEX.md, and tasks/. Search for realistic first-contract technical-services opportunities, reject weak keyword-only matches, verify public notice details, and update the local dashboard/watchlist with realistic leads and notes.`;copyText(text,'Starter prompt copied');}
+function onboardingPromptText(){return `You are setting up "Stormwind Contracting", a solo federal technical-services contracting business, inside the project at ${PROJECT_ROOT}.
+
+Your job: interview me, then create or update my profile and rules files so the rest of this toolkit (lead scoring, daily digest, dashboard, MCP research) reflects who I actually am. Work in this project directory and use the technical-contract-research MCP tools if they are connected.
+
+STEP 1 — Read first, do not assume:
+- PROFILE.md (the living business profile)
+- criteria/ (scoring rubrics: fit, exclusions, set-aside, size)
+- tasks/ (business-setup workstreams)
+- docs/ (ARCHITECTURE, SOP, V2_FEATURES) for context
+
+STEP 2 — Interview me. Ask ONE focused question at a time and wait for my answer before the next. Cover:
+1. Business identity: company name, legal structure, home state, owner, and status (e.g. service-disabled veteran, small business).
+2. Certifications and set-asides held or in progress (SDVOSB, SWaM, 8(a), HUBZone, WOSB) and registration status (SAM/UEI, eVA, VetCert).
+3. Capability lanes — the technical work I actually deliver (e.g. Elasticsearch/OpenSearch, AI search/RAG, observability/SIEM, data services, VTC/network engineering). Ask for real proof points, not aspirations.
+4. Hard exclusions — what I should never pursue (e.g. construction, staffing, hardware resale, work needing clearances I do not hold).
+5. Geography: where I can perform (remote vs on-site, which states) and place-of-performance preferences.
+6. Target NAICS codes and the contract size I can realistically win solo or with light help.
+7. Constraints: clearances, bonding, current capacity, team size.
+
+RULES: Do not invent facts. If I do not know something, record it as "unknown — to confirm" instead of guessing. Keep it realistic and flag anything that would over-claim capability or eligibility.
+
+STEP 3 — Write it back:
+- Update PROFILE.md with my identity, lanes, exclusions, set-aside posture, geography, size hints, and stated assumptions.
+- Update the relevant files in criteria/ so scoring rewards my real lanes and rejects my exclusions.
+- Add or update tasks/ for any open setup workstreams we surfaced (registrations, certifications, first bid).
+Then summarize exactly what you changed and list everything still marked "unknown" so I can fill it in later.`;}
+function copyOnboardingPrompt(){copyText(onboardingPromptText(),'Onboarding prompt copied — paste into Claude or Codex');}
+function togglePromptPreview(){const p=document.getElementById('starterPreview');if(!p)return;const btn=event&&event.target;if(p.style.display==='none'){p.textContent=onboardingPromptText();p.style.display='';if(btn)btn.textContent='Hide preview';}else{p.style.display='none';if(btn)btn.textContent='Preview prompt';}}
+function dismissStarter(){const b=document.getElementById('starterBanner');if(b)b.style.display='none';localStorage.setItem('swcb-starter-hidden','1');}
 function copyPath(rel){const r=PROJECT_ROOT.replace(/[\\\/]$/,'');copyText(r+'\\\\'+rel.replace(/\//g,'\\\\'),'Path copied');}
 async function openArtifact(path){try{await api('/api/open-artifact',{method:'POST',body:{path}});showToast('Opened '+path);}catch(e){showToast('Could not open: '+e.message);}}
 
@@ -3077,6 +3129,7 @@ async function refreshOverview(){try{const [watchlist,tasks]=await Promise.all([
     seedWelcome(tasks);}
   catch(e){setText('heroPursuits','--');setText('heroTasks','--');}}
 async function init(){
+  if(localStorage.getItem('swcb-starter-hidden')==='1'){const sb=document.getElementById('starterBanner');if(sb)sb.style.display='none';}
   const dz=document.getElementById('promptDropZone');const fi=document.getElementById('promptFileInput');
   if(fi)fi.addEventListener('change',ev=>savePromptFiles(ev.target.files));
   if(dz){['dragenter','dragover'].forEach(n=>dz.addEventListener(n,ev=>{ev.preventDefault();dz.style.borderColor='var(--primary)';}));['dragleave','drop'].forEach(n=>dz.addEventListener(n,ev=>{ev.preventDefault();dz.style.borderColor='';}));dz.addEventListener('drop',ev=>savePromptFiles(ev.dataTransfer.files));}
