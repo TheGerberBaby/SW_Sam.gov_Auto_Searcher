@@ -8,7 +8,7 @@ This project keeps a fast local mirror of SAM.gov opportunity data, stores publi
 >
 > **Stage 1 spine.** [`PROFILE.md`](PROFILE.md) is now the living business profile. Business workstreams live as markdown task files in [`tasks/`](tasks/) and are managed via `swcb tasks ...`. The scoring rubrics moved to [`criteria/`](criteria/). See [docs/STAGE1_SPINE.md](docs/STAGE1_SPINE.md) and [ROADMAP_REVIEW.md](ROADMAP_REVIEW.md).
 >
-> **Stages 2-5.** USAspending incumbent analysis, eCFR clause grounding, Goose recipes, IMAP email scaffold, phone-accessible dashboard with HTTP Basic + Ask command palette, labeled-gold-set harness (macro-F1 + Cohen's kappa), and a DSPy GEPA scaffold for self-evolving criteria. See [docs/STAGES_2_5.md](docs/STAGES_2_5.md).
+> **Stages 2-5.** USAspending incumbent analysis, eCFR clause grounding, Goose recipes, IMAP email scaffold, a single-page operator dashboard (HTTP Basic auth, expandable system-tree panels), labeled-gold-set harness (macro-F1 + Cohen's kappa), and a DSPy GEPA scaffold for self-evolving criteria. See [docs/STAGES_2_5.md](docs/STAGES_2_5.md).
 
 ## System Schematic
 
@@ -24,7 +24,7 @@ This project keeps a fast local mirror of SAM.gov opportunity data, stores publi
 - Indexes public solicitation attachments, SOWs, PWS files, and amendments in Elasticsearch.
 - Gives Codex and Claude an MCP tool surface for structured opportunity search plus document evidence retrieval.
 - Keeps lead research focused on technical services: Elastic/OpenSearch, AI search and RAG, observability/SIEM, AI/data services, and VTC/network engineering.
-- **v2:** scores every candidate against the operator's rubric, tracks pursuits in a watchlist, generates ranked daily digest reports, and ships a local web dashboard.
+- **v2:** scores every candidate against the operator's rubric, tracks pursuits in a watchlist, generates ranked daily digest reports, and ships a single-page local web dashboard (system-tree panels for leads, pursuits, and business setup).
 
 ## Repository Layout
 
@@ -179,6 +179,31 @@ python scripts/dashboard.py --env dev
 ```
 
 Full v2 reference: [docs/V2_FEATURES.md](docs/V2_FEATURES.md).
+
+## Operator Dashboard
+
+`scripts/dashboard.py` serves a single self-contained page — no build step and no
+external dependencies (inline HTML/CSS/JS over the standard-library HTTP server).
+The layout is a **system tree**: a left rail of nodes plus a stack of expandable
+panels, any number of which can be open at once.
+
+| Panel | What it does |
+| --- | --- |
+| Today's Leads | Run a profile-based scan; see solo / light-help / team reads. |
+| Find Leads | Search the local SAM mirror by keyword, agency, place, set-aside. |
+| Pursuits | Working watchlist; move leads through stages and rate your own fit. |
+| Business Setup | Stormwind operating tasks (formation, SAM, VetCert, eVA, first bid). |
+| Prompt Library | Reusable research prompts and saved filter searches. |
+| Profile & Rules | The profile and fit rules your AI should read; copy the AI starter prompt. |
+
+The dashboard has **no built-in AI chat** — for questions, use Claude or Codex
+directly and paste the starter prompt from **Profile & Rules** to point them at
+this project. Prod and dev run on separate state and ports:
+
+```powershell
+python scripts/dashboard.py --env prod   # http://127.0.0.1:8765/  (data/watchlist.db)
+python scripts/dashboard.py --env dev    # http://127.0.0.1:8766/  (data/dev/watchlist.db)
+```
 
 ## More Detail
 
