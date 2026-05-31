@@ -182,28 +182,37 @@ Full v2 reference: [docs/V2_FEATURES.md](docs/V2_FEATURES.md).
 
 ## Operator Dashboard
 
-`scripts/dashboard.py` serves a single self-contained page — no build step and no
+`scripts/dashboard.py` serves a single self-contained page — no build step, no
 external dependencies (inline HTML/CSS/JS over the standard-library HTTP server).
-The layout is a **system tree**: a left rail of nodes plus a stack of expandable
-panels, any number of which can be open at once.
+It is organized around your **scans**.
+
+- **Getting-started banner.** On first load, a one-click prompt you paste into
+  Claude or Codex; it interviews you and writes your [`PROFILE.md`](PROFILE.md),
+  scoring [`criteria/`](criteria/), and [`tasks/`](tasks/). Dismissable.
+- **Past Scans — the centerpiece.** Every scan (run from the page, or by
+  Claude/Codex on your behalf) appears as a card with its lead count, date, and a
+  **0–5 star rating** (visual, browser-remembered). Open a scan to explore its
+  leads inline and send the ones you like to **Pursuits**.
+- **Tucked below**, a collapsible system tree of secondary panels:
 
 | Panel | What it does |
 | --- | --- |
-| Today's Leads | Run a profile-based scan; see solo / light-help / team reads. |
 | Find Leads | Search the local SAM mirror by keyword, agency, place, set-aside. |
 | Pursuits | Working watchlist; move leads through stages and rate your own fit. |
 | Business Setup | Stormwind operating tasks (formation, SAM, VetCert, eVA, first bid). |
 | Prompt Library | Reusable research prompts and saved filter searches. |
-| Profile & Rules | The profile and fit rules your AI should read; copy the AI starter prompt. |
+| Profile & Rules | The profile and fit rules your AI should read; copy the onboarding or research prompt. |
 
 The dashboard has **no built-in AI chat** — for questions, use Claude or Codex
-directly and paste the starter prompt from **Profile & Rules** to point them at
-this project. Prod and dev run on separate state and ports:
+directly. Prod and dev run on separate state and ports:
 
 ```powershell
 python scripts/dashboard.py --env prod   # http://127.0.0.1:8765/  (data/watchlist.db)
 python scripts/dashboard.py --env dev    # http://127.0.0.1:8766/  (data/dev/watchlist.db)
 ```
+
+Scans are only as current as the local mirror — refresh it with
+`python scripts/sync_bulk.py` so deadlines aren't stale.
 
 ## More Detail
 
