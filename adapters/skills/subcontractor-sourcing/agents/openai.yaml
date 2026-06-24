@@ -1,0 +1,4 @@
+interface:
+  display_name: "Subcontractor Sourcing"
+  short_description: "Find local subs to perform an opportunity + call script"
+  default_prompt: "Use $subcontractor-sourcing to find local subcontractors for an opportunity I'm priming and give me the call script and email ask-list."

@@ -8,6 +8,10 @@ Prereqs: Docker Desktop running, `pip install -r requirements.txt` already
 done on the host (for the daily sync scripts), and a `data/contracts.db`
 produced by `scripts/sync_bulk.py`.
 
+The MCP container mounts `data/` read-write intentionally: discovery reads the
+SAM mirror while `publish_research_scan`, digest, and watchlist tools persist
+operator-visible Workbench state under `data/`.
+
 ---
 
 ## Claude Code (CLI)
@@ -20,6 +24,10 @@ appear as `mcp__technical-contract-research__*` tools.
 
 Restart Claude Code (or run `/mcp` to reconnect) after pulling new commits
 that change `.mcp.json`.
+
+The additive panel tools are `evaluate_opportunity` and `get_panel_verdict`.
+`evaluate_opportunity` requires `ANTHROPIC_API_KEY` in `.env` and explicitly
+public indexed evidence for the notice. See [PANEL.md](PANEL.md).
 
 ---
 
@@ -81,3 +89,12 @@ prompt or call `document_index_status`. Docker will pull `elasticsearch:9.4.1`
 on first run (~1.3 GB, one-time) and the MCP startup will wait for the ES
 healthcheck. Subsequent invocations attach to the already-healthy ES
 container and are fast.
+
+For contract-lead research, the client should call `publish_research_scan`
+exactly once after validation so the final curated results appear under Past
+Scans in the production Workbench.
+
+Opportunity-card subcontractor research uses a durable queue. Call
+`list_vendor_sourcing_jobs`, then `get_vendor_sourcing_job`, complete the
+public-web and solicitation-document research, and call
+`complete_vendor_sourcing_job` with the final sourced Markdown report.

@@ -25,6 +25,8 @@ data/*.csv
 data/exports/
 data/last_sync.txt
 data/document-cache/
+data/vendor-sourcing-jobs/
+data/selected_contract_context.json
 
 # v2 generated digests
 data/digests/
@@ -36,12 +38,14 @@ data/ecfr_cache.json
 # Secrets that must never be committed
 email/config.toml
 *.app_password
+criteria/PANEL_OPERATOR_FACTS.json
 
 # Generated research exports
 *.xlsx
 *_Leads_*.csv
 QuoteBack_*.csv
 SW_MixedLeads*.xlsx
+reports/
 
 # Local logs and OS metadata
 *.log

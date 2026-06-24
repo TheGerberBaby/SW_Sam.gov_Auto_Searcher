@@ -20,7 +20,7 @@ or `planned`. Correct anything wrong on first read.
 
 # Stormwind Contracting — Living Business Profile
 
-_Last reviewed: 2026-05-29_
+_Last reviewed: 2026-06-17_
 
 ## Identity
 
@@ -28,18 +28,21 @@ _Last reviewed: 2026-05-29_
 - **Business name:** Stormwind Contracting
 - **Operator status:** Service-disabled veteran (qualifies for SDVOSB once
   certification clears)
-- **Day-job constraint:** W2 employee — time-constrained solo founder
+- **Operating model:** owner-led field-services business with a maximum
+  **two-to-three-person crew** for near-term prime work
+- **Day-job constraint:** W2 employee — schedule field work deliberately
 - **Operating timezone:** America/New_York
 
 ## Place of performance focus
 
 - Primary: **DMV** (Washington DC, Northern Virginia, Maryland)
-- Remote-eligible work is in scope
-- On-site outside the DMV: case-by-case, lower priority
+- On-site outside the DMV: case-by-case when travel, warranty response, and
+  licensing are practical
+- Remote-only work is secondary to field installation work
 
 ## Primary NAICS
 
-- **541512** — Computer Systems Design Services
+- **561621** — Security Systems Services (except Locksmiths)
   - SBA size standard: verify against the current
     [13 CFR 121.201 table](https://www.sba.gov/document/support--table-size-standards)
     at the moment of any filing.
@@ -48,12 +51,9 @@ _Last reviewed: 2026-05-29_
 
 | NAICS | Category | Use |
 | --- | --- | --- |
-| 541511 | Custom computer programming services | Discovery hint |
-| 541513 | Computer facilities management services | Discovery hint |
-| 541519 | Other computer related services | Discovery hint |
-| 518210 | Computing infrastructure, data processing, hosting | Discovery hint |
-| 517810 | Telecommunications | VTC/network discovery hint |
-| 541715 | R&D in physical, engineering, life sciences | Discovery hint |
+| 238210 | Electrical contractors and other wiring installation contractors | Structured cabling, low-voltage, and fiber discovery hint |
+| 541512 | Computer systems design services | Network configuration and integration discovery hint |
+| 334290 | Other communications equipment manufacturing | Equipment-heavy notice discovery hint only |
 
 ## Capability lanes (what we actually pursue)
 
@@ -63,35 +63,40 @@ Short version:
 
 ### Tier-1 — direct technical fit
 
-- Elasticsearch, Elastic Stack, Kibana, Logstash, Elastic Agent / Fleet,
-  Elastic Security, OpenSearch.
-- AI search / RAG / vector / semantic / hybrid retrieval; LLM-grounded
-  enterprise content systems.
-- Observability, log analytics, APM, SIEM, detection engineering,
-  security analytics.
+- Security-camera, CCTV, and video-monitoring installation and upgrades.
+- Electronic access-control installation: card readers, badge readers,
+  door-control components, and small physical-access systems.
+- Structured cabling, low-voltage data cabling, Cat6, patch panels, cable
+  testing, and bounded fiber runs.
 
 ### Tier-2 — adjacent technical fit
 
-- AI/ML engineering services, data engineering, DevSecOps automation,
-  cloud platform integration, zero-trust telemetry.
-- Network engineering, VTC, unified communications, AV-over-IP,
-  network modernization (when the SOW includes design / integration /
-  configuration / engineering / monitoring).
+- Intrusion-detection and alarm-system installation or upgrade work when the
+  exact licensing, OEM, and code requirements are executable.
+- Small network, Wi-Fi, AV-over-IP, VTC, or intercom installation jobs when
+  field labor, testing, and handoff are the core deliverables.
 
 ### Conditional
 
-- Hardware, appliances, license renewals: only with a meaningful
-  services component or an established reseller/partner route
-  (currently **none confirmed**).
-- Staffing, managed-ops, broad enterprise programs: only when scope,
-  team size, clearance, location, and subcontracting are realistic.
+- Fire-alarm, life-safety, electrical-power, proprietary OEM, and recurring
+  maintenance work: pursue only after confirming the required license,
+  technician registration, code responsibility, OEM route, and response SLA.
+- Multi-site or out-of-area installation work: pursue only when a
+  two-to-three-person crew can meet travel, schedule, and warranty obligations.
+- Product-heavy work: pursue only when the margin, sourcing, and installation
+  responsibility are understood.
+- Home-office product sourcing and resale: scan only when explicitly requested.
+  Prefer bounded commercial-product RFQs with one or a few standard items,
+  distributor-supported fulfillment, FOB-destination freight, adequate quote
+  runway, manageable cash flow, and a documented nonmanufacturer-rule check.
 
 ### Out of scope by default
 
-Construction, facility repair, janitorial, trades, AV install only,
-commodity resale, medical/lab supplies, ammunition, fuel delivery,
-food service. (Construction material in this repo is historical test
-data only.)
+Large construction programs, high-voltage electrical work, broad facility
+repair, janitorial, unrelated trades, nationwide staffing, 24/7 guard
+operations, commodity resale without installation, medical/lab supplies,
+ammunition, fuel delivery, and food service. Construction material in this
+repo is historical test data only unless the operator explicitly requests it.
 
 ## Certifications, registrations, business posture
 
@@ -100,13 +105,16 @@ Detailed status, dependencies, and next-actions live in the
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Legal entity formed | **unknown** | See [001-entity-formation.md](tasks/001-entity-formation.md) — confirm or correct |
-| EIN | **unknown** | Dependency of every cert below |
-| SAM.gov registration | **unknown** | Required prerequisite for VetCert |
+| Legal entity formed | **held** | Confirmed complete in [001-entity-formation.md](tasks/001-entity-formation.md) |
+| EIN | **held** | Confirmed 2026-05-31; full TIN intentionally not stored in this repo |
+| SAM.gov identifiers | **held** | UEI `LE4ZH9KC7BU1`; CAGE `1ZW38` |
+| SAM.gov registration | **held** | Entity Workspace status `Active`; expires Apr 25, 2027; SAM public search authorization is `Yes`; SBA SBS public display is enabled |
 | **SDVOSB (federal, via SBA VetCert)** | **planned** | [003-sdvosb-vetcert.md](tasks/003-sdvosb-vetcert.md) — free, ~12-day avg processing, mandatory since 2024-12-22 |
 | FinCEN BOI filing | **planned** | [004-fincen-boi.md](tasks/004-fincen-boi.md) |
 | Virginia SWaM + state SDVOSB (DSBSD) | **planned** | [005-virginia-swam.md](tasks/005-virginia-swam.md) |
 | eVA registration | **planned** | [006-eva-registration.md](tasks/006-eva-registration.md) |
+| Virginia field-installation licensing check | **planned** | [009-field-installation-licensing.md](tasks/009-field-installation-licensing.md) |
+| First home-office reseller quote assessed | **in-progress** | [010-nist-scissor-lift-reseller-quote.md](tasks/010-nist-scissor-lift-reseller-quote.md) |
 | First micro-purchase bid submitted | **planned** | [007-first-micro-purchase-bid.md](tasks/007-first-micro-purchase-bid.md) — validation milestone |
 
 ## Set-aside strategy

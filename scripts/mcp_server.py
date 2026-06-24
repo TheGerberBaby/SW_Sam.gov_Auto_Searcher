@@ -26,9 +26,12 @@ from document_store import (
 from scoring import available_profiles, bulk_score, score_opportunity
 from watchlist import Store as WatchlistStore, VALID_STATUSES
 from digest import generate_digest
+from panel.service import PanelService
+from panel.store import PanelStore
 import tasks_lib
 import usaspending
 import ecfr
+import vendor_jobs
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_DIR / "data" / "contracts.db"
@@ -42,10 +45,14 @@ LOCAL_TIMEZONE = ZoneInfo(USER_TIMEZONE)
 mcp = FastMCP(
     "technical-contract-research",
     instructions=(
-        "Research public federal technical-services opportunities for the operator. "
-        "Prioritize Elastic/OpenSearch, AI search and RAG, observability/SIEM, "
-        "AI/data services, and VTC/network engineering. Reject closed, unrelated, "
-        "or weak keyword-only matches."
+        "Research public federal small-team field-installation opportunities for the operator. "
+        "Prioritize security cameras, CCTV/video monitoring, access control, "
+        "structured cabling, low-voltage data cabling, and bounded fiber work. "
+        "Reject closed, unrelated, oversized, or weak keyword-only matches. "
+        "After each user-requested contract-lead scan, "
+        "call publish_research_scan exactly once with the final curated results, "
+        "including an empty list when no supported fit is found. Do not publish "
+        "intermediate keyword-search results."
     ),
 )
 
@@ -84,19 +91,19 @@ def _captured_json(function: Any, store: ElasticDocumentStore, args: SimpleNames
 
 @mcp.resource("technical-contracts://profiles/service-fit")
 def technical_services_profile_resource() -> str:
-    """Active opportunity-fit profile for the operator's technical-services work."""
+    """Active opportunity-fit profile for the operator's field-installation work."""
     return PROFILE_PATH.read_text(encoding="utf-8")
 
 
 @mcp.prompt()
 def find_technical_services_leads() -> str:
-    """Research public SAM.gov technical-services opportunities for the operator."""
+    """Research public SAM.gov field-installation opportunities for the operator."""
     return PROMPT_PATH.read_text(encoding="utf-8")
 
 
 @mcp.tool()
 def get_technical_services_profile() -> str:
-    """Return the operator's active broad technical-services lead-selection profile."""
+    """Return the operator's active field-installation lead-selection profile."""
     return PROFILE_PATH.read_text(encoding="utf-8")
 
 
@@ -230,6 +237,7 @@ def ingest_public_document(
         title=title or None,
         document_type=document_type,
         metadata=[f"public_source_url={url}"],
+        public=True,
         embedding_provider=None,
         json=True,
     )
@@ -263,6 +271,28 @@ def search_documents(
         raise ValueError(str(exc)) from exc
 
 
+@mcp.tool()
+async def evaluate_opportunity(notice_id: str) -> dict[str, Any]:
+    """Run the independent Phase-1 panel for one notice and persist its verdict.
+
+    The argument accepts a SAM notice ID. A solicitation number is also
+    accepted as a convenience fallback when it resolves in the local mirror.
+    """
+    try:
+        return await PanelService().evaluate(notice_id)
+    except Exception as exc:
+        raise ValueError(str(exc)) from exc
+
+
+@mcp.tool()
+def get_panel_verdict(notice_id: str) -> dict[str, Any]:
+    """Return the latest stored panel verdict for one notice."""
+    result = PanelStore().latest_for_notice(notice_id)
+    if result is None:
+        raise ValueError(f"No stored panel verdict found for {notice_id!r}")
+    return result.to_dict()
+
+
 # ---------------------------------------------------------------------------
 # v2 tools: scoring, watchlist, saved searches, daily digest
 # ---------------------------------------------------------------------------
@@ -270,6 +300,73 @@ def search_documents(
 
 def _watchlist_store() -> WatchlistStore:
     return WatchlistStore()
+
+
+def _mirror_opportunity(notice_id: str) -> dict[str, Any]:
+    if not DB_PATH.exists():
+        return {}
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            """
+            SELECT notice_id, title, sol_number, department, sub_tier, posted_date,
+                   type, set_aside, set_aside_code, response_deadline, naics_code,
+                   pop_city, pop_state, active, link, description
+              FROM opportunities
+             WHERE notice_id = ?
+            """,
+            (notice_id,),
+        ).fetchone()
+    return dict(row) if row else {}
+
+
+def _note_text(value: Any) -> str:
+    if isinstance(value, list):
+        return "; ".join(str(item) for item in value if str(item).strip())
+    return str(value or "").strip()
+
+
+def _research_delivery_read(item: dict[str, Any]) -> dict[str, str] | None:
+    disposition = str(item.get("disposition") or "").strip().lower()
+    if not disposition:
+        return None
+    detail = (
+        _note_text(item.get("blockers"))
+        or _note_text(item.get("concern"))
+        or _note_text(item.get("supported_fit"))
+        or "See the AI research notes."
+    )
+    if disposition == "assess now":
+        return {"label": "Assess now", "detail": detail, "level": "solo"}
+    if disposition == "monitor/partner":
+        return {"label": "Monitor / partner", "detail": detail, "level": "team"}
+    if disposition == "reject":
+        return {"label": "Reject", "detail": detail, "level": "monitor"}
+    return {"label": disposition, "detail": detail, "level": "monitor"}
+
+
+def _normalize_research_item(item: dict[str, Any], profile: str) -> dict[str, Any]:
+    notice_id = str(item.get("notice_id") or "").strip()
+    if not notice_id:
+        raise ValueError("each research-scan item must include notice_id")
+    mirror = _mirror_opportunity(notice_id)
+    scored: dict[str, Any] = {}
+    if mirror:
+        scored = score_opportunity(mirror, profile=profile).to_dict()
+    normalized = {**mirror, **scored, **item, "notice_id": notice_id}
+    title = str(normalized.get("title") or "").strip()
+    if not title:
+        raise ValueError(f"research-scan item {notice_id!r} needs a title because it is not in the local mirror")
+    normalized["title"] = title
+    normalized.setdefault("band", "monitor")
+    normalized.setdefault("lanes", [])
+    deadline_open, deadline_note = _deadline_status(normalized.get("response_deadline"))
+    normalized["deadline_open"] = deadline_open
+    normalized["deadline_note"] = deadline_note
+    delivery_read = _research_delivery_read(normalized)
+    if delivery_read:
+        normalized["delivery_read"] = delivery_read
+    return normalized
 
 
 @mcp.tool()
@@ -409,6 +506,47 @@ def generate_daily_digest(
 
 
 @mcp.tool()
+def publish_research_scan(
+    summary: str,
+    items: list[dict[str, Any]],
+    candidates_scanned: int = 0,
+    profile: str = "technical_services",
+) -> dict[str, Any]:
+    """Publish one final curated AI lead scan into the production Workbench.
+
+    Call this exactly once after a user-requested contract-lead search. Publish
+    only the final recommended or monitor/partner items, not intermediate
+    discovery results. Pass an empty item list when no supported fit is found.
+
+    Each item must include `notice_id`. Local SAM metadata and deterministic
+    scoring are added automatically when the notice exists in the mirror.
+    Useful optional research fields are `disposition`, `supported_fit`,
+    `concern`, `blockers`, and `evidence`.
+    """
+    if profile not in available_profiles():
+        raise ValueError(f"Unknown profile {profile!r}")
+    if not isinstance(items, list):
+        raise ValueError("items must be a list")
+    normalized_items = [_normalize_research_item(item, profile) for item in items]
+    run_id = _watchlist_store().publish_research_scan(
+        summary=summary,
+        items=normalized_items,
+        profile=profile,
+        candidates_scanned=max(0, candidates_scanned),
+    )
+    return {
+        "ok": True,
+        "scan_id": run_id,
+        "source": "ai_research",
+        "profile": profile,
+        "candidates_scanned": max(candidates_scanned, len(normalized_items)),
+        "candidates_shown": len(normalized_items),
+        "summary": summary,
+        "items": normalized_items,
+    }
+
+
+@mcp.tool()
 def add_to_watchlist(
     notice_id: str,
     title: str = "",
@@ -465,6 +603,25 @@ def add_watchlist_note(notice_id: str, text: str) -> dict[str, Any]:
     """Append a dated note to a watchlist entry."""
     _watchlist_store().add_note(notice_id, text)
     return {"ok": True}
+
+
+@mcp.tool()
+def list_vendor_sourcing_jobs(status: str = "queued_for_codex", limit: int = 20) -> dict[str, Any]:
+    """List opportunity-specific subcontractor-sourcing jobs created by Workbench cards."""
+    jobs = vendor_jobs.list_sourcing_jobs(status=status or None, limit=limit)
+    return {"count": len(jobs), "jobs": jobs}
+
+
+@mcp.tool()
+def get_vendor_sourcing_job(job_id: str) -> dict[str, Any]:
+    """Return one queued subcontractor-sourcing job and its Codex research handoff."""
+    return vendor_jobs.get_sourcing_job(job_id)
+
+
+@mcp.tool()
+def complete_vendor_sourcing_job(job_id: str, report_markdown: str) -> dict[str, Any]:
+    """Mark a sourcing job complete after Codex adds sourced public-web and document findings."""
+    return vendor_jobs.complete_sourcing_job(job_id, report_markdown)
 
 
 @mcp.tool()

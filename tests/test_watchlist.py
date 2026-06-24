@@ -124,6 +124,32 @@ class WatchlistTests(unittest.TestCase):
         runs = self.store.list_digest_runs(limit=5)
         self.assertEqual(len(runs), 1)
         self.assertEqual(runs[0]["candidates_shown"], 4)
+        self.assertEqual(runs[0]["source"], "digest")
+
+    def test_publish_research_scan_records_dashboard_items(self):
+        run_id = self.store.publish_research_scan(
+            summary="One realistic cleared-network teaming lead.",
+            candidates_scanned=12,
+            items=[{
+                "notice_id": "N-1",
+                "title": "Cleared network support",
+                "disposition": "monitor/partner",
+            }],
+        )
+        run = self.store.get_digest_run(run_id)
+        self.assertEqual(run["source"], "ai_research")
+        self.assertEqual(run["candidates_scanned"], 12)
+        self.assertEqual(run["candidates_shown"], 1)
+        self.assertIn("Cleared network support", run["items_json"])
+
+    def test_publish_empty_research_scan_is_allowed(self):
+        run_id = self.store.publish_research_scan(
+            summary="No strongly supported fit found.",
+            items=[],
+        )
+        run = self.store.get_digest_run(run_id)
+        self.assertEqual(run["source"], "ai_research")
+        self.assertEqual(run["candidates_shown"], 0)
 
 
 if __name__ == "__main__":

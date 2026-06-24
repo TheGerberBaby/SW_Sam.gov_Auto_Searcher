@@ -38,16 +38,17 @@ class ScoringTests(unittest.TestCase):
 
     def test_tier1_keyword_in_title_drives_strong_band(self):
         opp = self._opp(
-            title="Elasticsearch cluster engineering and tuning support",
-            description="Cluster sizing, ingest pipelines, security analytics dashboards.",
-            naics_code="541512",
+            title="Security camera and access control installation",
+            description="Install CCTV cameras, Cat6 cabling, and card readers.",
+            naics_code="561621",
             set_aside_code="SBA",
             response_deadline=(self._today() + timedelta(days=21)).isoformat(),
         )
         result = scoring.score_opportunity(opp, today=self._today())
         self.assertGreaterEqual(result.score, 5)
         self.assertEqual(result.band, "strong")
-        self.assertIn("elastic_search", result.lanes)
+        self.assertIn("electronic_security", result.lanes)
+        self.assertIn("cabling_fiber", result.lanes)
         kinds = [r.kind for r in result.reasons]
         self.assertIn("tier1_keyword", kinds)
         self.assertIn("set_aside", kinds)
@@ -58,7 +59,7 @@ class ScoringTests(unittest.TestCase):
             description="Construction services required, asphalt and demolition.",
             response_deadline=(self._today() + timedelta(days=21)).isoformat(),
         )
-        result = scoring.score_opportunity(opp, today=self._today())
+        result = scoring.score_opportunity(opp, profile="elastic_only", today=self._today())
         self.assertEqual(result.band, "reject")
         self.assertTrue(any(r.kind == "exclusion" for r in result.reasons))
 
@@ -75,19 +76,21 @@ class ScoringTests(unittest.TestCase):
             title="SIEM equipment parts catalog",
             description="Siemens-branded controllers and accessories.",
         )
-        result = scoring.score_opportunity(opp, today=self._today())
+        result = scoring.score_opportunity(opp, profile="elastic_only", today=self._today())
         kinds = [r.kind for r in result.reasons]
         self.assertIn("false_positive_guard", kinds)
 
-    def test_elastic_only_profile_uses_smaller_weights(self):
+    def test_elastic_only_profile_retains_legacy_specialist_lane(self):
         opp = self._opp(
             title="Elasticsearch platform engineering",
             description="Kibana dashboards and Logstash ingestion pipeline configuration.",
             response_deadline=(self._today() + timedelta(days=10)).isoformat(),
         )
-        broad = scoring.score_opportunity(opp, profile="technical_services", today=self._today())
+        field_default = scoring.score_opportunity(opp, profile="technical_services", today=self._today())
         narrow = scoring.score_opportunity(opp, profile="elastic_only", today=self._today())
-        self.assertGreater(broad.score, narrow.score)
+        self.assertGreater(narrow.score, field_default.score)
+        self.assertIn("elastic_search", narrow.lanes)
+        self.assertNotIn("elastic_search", field_default.lanes)
 
     def test_vtc_keyword_lands_in_network_vtc_lane(self):
         opp = self._opp(
@@ -97,6 +100,25 @@ class ScoringTests(unittest.TestCase):
         )
         result = scoring.score_opportunity(opp, today=self._today())
         self.assertIn("network_vtc", result.lanes)
+
+    def test_field_keyword_without_execution_scope_is_demoted(self):
+        opp = self._opp(
+            title="Cybersecurity class vouchers",
+            description="Training includes a video surveillance assessment module.",
+            set_aside_code="SBA",
+        )
+        result = scoring.score_opportunity(opp, today=self._today())
+        self.assertEqual(result.band, "reject")
+        self.assertTrue(any(r.kind == "field_scope_missing" for r in result.reasons))
+
+    def test_sole_source_install_notice_is_rejected(self):
+        opp = self._opp(
+            title="Sole Source CCTV Install",
+            description="Install access control and intrusion detection equipment.",
+        )
+        result = scoring.score_opportunity(opp, today=self._today())
+        self.assertEqual(result.band, "reject")
+        self.assertTrue(any(r.kind == "prohibited_notice" for r in result.reasons))
 
     def test_resell_signal_penalizes(self):
         opp = self._opp(
@@ -113,7 +135,7 @@ class ScoringTests(unittest.TestCase):
 
     def test_bulk_score_returns_list(self):
         opps = [
-            self._opp(notice_id="A", title="Elasticsearch services"),
+            self._opp(notice_id="A", title="Structured cabling installation"),
             self._opp(notice_id="B", title="Lawn care"),
         ]
         results = scoring.bulk_score(opps, today=self._today())

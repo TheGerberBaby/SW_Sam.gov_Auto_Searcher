@@ -53,6 +53,8 @@ def reports_dir_for_env(env: str | None = None) -> Path:
 REPORTS_DIR = reports_dir_for_env("prod")
 
 LANE_LABELS = {
+    "electronic_security": "Electronic Security / Cameras / Access Control",
+    "cabling_fiber": "Structured Cabling / Fiber",
     "elastic_search": "Elastic / Search",
     "ai_retrieval": "AI / Retrieval (RAG, vector, semantic)",
     "observability_siem": "Observability / SIEM / Log Analytics",
@@ -121,8 +123,9 @@ def _delivery_read(opp: dict[str, Any], result: ScoreResult) -> dict[str, Any]:
     ]
     solo_terms = [
         "one-time", "single", "rfq", "request for quote", "combined synopsis",
-        "data cleanup", "documentation", "assessment", "repair", "break/fix",
-        "report", "migration", "configuration", "training",
+        "installation", "install", "replacement", "upgrade", "termination",
+        "testing", "commissioning", "documentation", "assessment", "repair",
+        "break/fix", "report", "configuration", "training",
     ]
     notice_type = (opp.get("type") or "").lower()
     risk_hits = [term for term in risk_terms if term in text]
@@ -148,7 +151,7 @@ def _delivery_read(opp: dict[str, Any], result: ScoreResult) -> dict[str, Any]:
     if result.score >= 3:
         return {
             "label": "Solo or light help",
-            "detail": "Looks worth checking the SOW/PWS for team size, clearance, and schedule.",
+            "detail": "Looks worth checking the SOW/PWS for team size, licensing, insurance, and schedule.",
             "level": "light_help",
         }
     return {

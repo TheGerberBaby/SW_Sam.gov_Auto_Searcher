@@ -28,7 +28,7 @@ updated: 2026-05-29
 
 - 51%+ unconditional ownership and control by a service-disabled
   veteran (any rating, even 0% — qualifying disability is the gate).
-- Small under the primary NAICS (verify NAICS 541512 size standard
+- Small under the primary NAICS (verify NAICS 561621 size standard
   at the moment of filing against [13 CFR 121.201](https://www.sba.gov/document/support--table-size-standards)).
 - Active SAM.gov registration (see [002](002-sam-gov-registration.md)).
 - DD-214.
@@ -39,7 +39,7 @@ updated: 2026-05-29
 - [ ] Locate DD-214
 - [ ] Locate or request current VA disability letter
 - [ ] Confirm 51%+ ownership/control documented (operating agreement)
-- [ ] Verify NAICS 541512 size standard at current filing date
+- [ ] Verify NAICS 561621 size standard at current filing date
 - [ ] Confirm SAM.gov registration is `Active`
 - [ ] Create / log into VetCert account at <https://veterans.certify.sba.gov>
 - [ ] Submit application

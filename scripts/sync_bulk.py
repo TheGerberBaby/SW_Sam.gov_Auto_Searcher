@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 import requests
+from panel.store import PanelStore
 
 BULK_URL = "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/datagov/ContractOpportunitiesFullCSV.csv"
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -91,6 +92,7 @@ def build_db():
         sys.exit(f"CSV not found at {CSV_PATH}. Run without --skip-download.")
 
     print(f"Parsing CSV into {DB_PATH}")
+    panel_snapshot = PanelStore.snapshot_existing(DB_PATH)
     if DB_PATH.exists():
         DB_PATH.unlink()
 
@@ -138,6 +140,7 @@ def build_db():
     conn.execute("CREATE INDEX idx_type ON opportunities(type)")
     conn.commit()
     conn.close()
+    PanelStore(DB_PATH).restore_snapshot(panel_snapshot)
 
     elapsed = time.time() - started
     size_mb = DB_PATH.stat().st_size / (1024 * 1024)

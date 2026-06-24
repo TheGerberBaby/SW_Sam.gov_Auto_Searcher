@@ -134,6 +134,15 @@ HTTP Basic prompt: username `stormwind`, password whatever you set.
 The dashboard refuses to bind to a non-loopback host without a
 password, on purpose.
 
+For an explicitly trusted Wi-Fi network, bind only the computer's Wi-Fi address
+and opt out of auth:
+
+```powershell
+swcb dashboard --host 192.168.1.157 --allow-unauthenticated-lan
+```
+
+Do not combine `--allow-unauthenticated-lan` with `--host 0.0.0.0`.
+
 New tabs:
 
 - **Ask** — command palette that routes natural-language commands.

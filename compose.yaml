@@ -51,8 +51,11 @@ services:
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
       USER_TIMEZONE: ${USER_TIMEZONE:-America/New_York}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
-      - ./data:/app/data:ro
+      # MCP discovery reads contracts.db; publish/watchlist tools intentionally
+      # write Workbench state and generated digest reports under data/.
+      - ./data:/app/data
     stdin_open: true
     command: ["python", "scripts/mcp_server.py"]
 

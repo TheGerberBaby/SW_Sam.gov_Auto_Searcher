@@ -35,9 +35,9 @@ class DigestRenderTests(unittest.TestCase):
     def _scored(self):
         opp = {
             "notice_id": "DEMO-1",
-            "title": "Elasticsearch cluster engineering services",
-            "description": "Elastic Stack tuning, Kibana dashboards, log ingestion design.",
-            "naics_code": "541512",
+            "title": "Security camera and access control installation",
+            "description": "Install CCTV cameras, card readers, and Cat6 cabling.",
+            "naics_code": "561621",
             "set_aside_code": "SBA",
             "set_aside": "Total Small Business",
             "response_deadline": "2026-06-30",
@@ -54,15 +54,15 @@ class DigestRenderTests(unittest.TestCase):
         scored, opps = self._scored()
         md = digest.render_markdown("technical_services", 3, 2, scored, opps, self.generated_at)
         self.assertIn("# SAM.gov Daily Digest", md)
-        self.assertIn("Elasticsearch cluster engineering services", md)
+        self.assertIn("Security camera and access control installation", md)
         self.assertIn("DEMO-1", md)
-        self.assertIn("Elastic / Search", md)
+        self.assertIn("Electronic Security / Cameras / Access Control", md)
 
     def test_html_renders_valid_document(self):
         scored, opps = self._scored()
         html_doc = digest.render_html("technical_services", 3, 2, scored, opps, self.generated_at)
         self.assertTrue(html_doc.startswith("<!DOCTYPE html>"))
-        self.assertIn("Elasticsearch cluster engineering services", html_doc)
+        self.assertIn("Security camera and access control installation", html_doc)
         self.assertIn("badge", html_doc)
         self.assertIn("STRONG", html_doc.upper())
 

@@ -7,7 +7,7 @@ Tables:
   watchlist           — opportunities Jeremy is actively pursuing
   watchlist_events    — append-only timeline of status changes / notes
   saved_searches      — named, repeatable search-filter sets
-  digest_runs         — record of when a daily digest was produced
+  digest_runs         — persisted dashboard scans from digests and AI research
 
 This module is import-safe (no side effects on import). Callers receive a
 `Store` instance and explicitly call methods.
@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS digest_runs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     run_at          TEXT NOT NULL,
     profile         TEXT NOT NULL,
+    source          TEXT NOT NULL DEFAULT 'digest',
     candidates_scanned INTEGER NOT NULL,
     candidates_shown   INTEGER NOT NULL,
     report_path     TEXT,
@@ -222,6 +223,8 @@ class Store:
             dcols = {row["name"] for row in conn.execute("PRAGMA table_info(digest_runs)").fetchall()}
             if "items_json" not in dcols:
                 conn.execute("ALTER TABLE digest_runs ADD COLUMN items_json TEXT")
+            if "source" not in dcols:
+                conn.execute("ALTER TABLE digest_runs ADD COLUMN source TEXT NOT NULL DEFAULT 'digest'")
 
     @contextmanager
     def _conn(self) -> Iterator[sqlite3.Connection]:
@@ -457,22 +460,49 @@ class Store:
         report_path: str | None = None,
         summary: str | None = None,
         items_json: str | None = None,
+        source: str = "digest",
     ) -> int:
         with self._conn() as conn:
             cur = conn.execute(
                 """
                 INSERT INTO digest_runs
-                    (run_at, profile, candidates_scanned, candidates_shown, report_path, summary, items_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (run_at, profile, source, candidates_scanned, candidates_shown, report_path, summary, items_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (_now(), profile, candidates_scanned, candidates_shown, report_path, summary, items_json),
+                (_now(), profile, source, candidates_scanned, candidates_shown, report_path, summary, items_json),
             )
             return cur.lastrowid
+
+    def publish_research_scan(
+        self,
+        summary: str,
+        items: list[dict[str, Any]],
+        profile: str = "technical_services",
+        candidates_scanned: int = 0,
+    ) -> int:
+        """Persist one curated AI research result set for the Workbench."""
+        if not summary.strip():
+            raise ValueError("summary must be non-empty")
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError("each research-scan item must be an object")
+            if not str(item.get("notice_id") or "").strip():
+                raise ValueError("each research-scan item must include notice_id")
+            if not str(item.get("title") or "").strip():
+                raise ValueError("each research-scan item must include title")
+        return self.record_digest_run(
+            profile=profile,
+            source="ai_research",
+            candidates_scanned=max(candidates_scanned, len(items)),
+            candidates_shown=len(items),
+            summary=summary,
+            items_json=json.dumps(items),
+        )
 
     def list_digest_runs(self, limit: int = 20) -> list[dict[str, Any]]:
         with self._conn() as conn:
             rows = conn.execute(
-                "SELECT id, run_at, profile, candidates_scanned, candidates_shown, "
+                "SELECT id, run_at, profile, source, candidates_scanned, candidates_shown, "
                 "report_path, summary FROM digest_runs ORDER BY id DESC LIMIT ?", (limit,)
             ).fetchall()
         return [dict(row) for row in rows]
@@ -566,6 +596,7 @@ def _cli() -> None:
     p_save.add_argument("--naics")
     p_save.add_argument("--state")
     p_save.add_argument("--set-aside", dest="set_aside")
+    p_save.add_argument("--notice-type", dest="notice_type")
     p_save.add_argument("--days", type=int)
     p_save.add_argument("--description")
     p_save.add_argument("--profile", default="technical_services")
@@ -611,6 +642,7 @@ def _cli() -> None:
             "naics": args.naics,
             "state": args.state,
             "set_aside": args.set_aside,
+            "notice_type": args.notice_type,
             "days": args.days,
         }
         filters = {k: v for k, v in filters.items() if v is not None}

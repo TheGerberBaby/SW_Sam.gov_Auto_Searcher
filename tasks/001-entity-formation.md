@@ -9,7 +9,7 @@ dependencies: []
 tags: [foundation, prerequisite]
 owner: jeremy
 created: 2026-05-29
-updated: 2026-05-29
+updated: 2026-05-31
 ---
 
 ## Why this matters
@@ -24,7 +24,7 @@ otherwise.
 
 - [ ] Entity type (LLC vs S-corp vs sole-prop)?
 - [ ] State of formation (presumed Virginia)?
-- [ ] EIN obtained?
+- [x] EIN obtained?
 - [ ] Operating agreement / bylaws in place?
 - [ ] Registered agent in place?
 
@@ -40,4 +40,5 @@ cross-reference.
 
 ## Notes
 
-(empty)
+- EIN confirmed 2026-05-31. Last four: `2880`. Full TIN intentionally
+  not stored in this repository.

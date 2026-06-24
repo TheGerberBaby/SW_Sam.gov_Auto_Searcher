@@ -71,3 +71,8 @@ Report the best supported technical matches, their official links, why each
 fits Elastic engineering, public-document evidence obtained, and blockers.
 Returning no strongly supported fit is correct when the available notices are
 generic IT/cyber work or unrelated implementation.
+
+Call `publish_research_scan` exactly once with the final curated `assess now`
+and `monitor/partner` results so the production Stormwind Workbench updates
+automatically. Publish an empty item list when no supported fit is found. Do
+not publish intermediate keyword-search results or rejected false positives.

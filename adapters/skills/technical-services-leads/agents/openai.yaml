@@ -1,4 +1,4 @@
 interface:
   display_name: "Technical Services Leads"
-  short_description: "Find AI, Elastic, network, and VTC federal work"
-  default_prompt: "Use $technical-services-leads to find federal technical-services opportunities aligned to my capabilities."
+  short_description: "Find camera, access-control, cabling, and fiber work"
+  default_prompt: "Use $technical-services-leads to find federal small-team field-installation opportunities aligned to my capabilities."

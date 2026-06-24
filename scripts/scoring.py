@@ -30,10 +30,64 @@ LOCAL_TZ = ZoneInfo("America/New_York")
 # Keyword and rule tables
 # ---------------------------------------------------------------------------
 
-# Tier-1 terms: an explicit named product, platform, or AI/search capability.
-# Matching one of these in title or description is the strongest signal we
-# get from public metadata alone.
-TIER1_TERMS = [
+# Tier-1 terms for the active profile: an explicit small-team field-install
+# capability. Matching one of these in title or description is the strongest
+# signal we get from public metadata alone.
+FIELD_INSTALL_TIER1_TERMS = [
+    "security camera",
+    "security cameras",
+    "cctv",
+    "video surveillance",
+    "video monitoring",
+    "camera installation",
+    "access control",
+    "physical access control",
+    "card reader",
+    "badge reader",
+    "structured cabling",
+    "data cabling",
+    "network cabling",
+    "cat6",
+    "cat 6",
+    "cat6a",
+    "cat 6a",
+]
+
+FIELD_INSTALL_TIER2_TERMS = [
+    "video management system",
+    "network video recorder",
+    "common access card",
+    "pin reader",
+    "door controller",
+    "request to exit",
+    "rex sensor",
+    "maglock",
+    "intrusion detection",
+    "alarm system",
+    "intercom",
+    "patch panel",
+    "cable testing",
+    "low voltage",
+    "low-voltage",
+    "fiber optic",
+    "fiber-optic",
+    "inside plant",
+    "outside plant",
+    "otdr",
+    "video teleconference",
+    "video teleconferencing",
+    "video conference",
+    "video conferencing",
+    "unified communications",
+    "av over ip",
+    "av-over-ip",
+    "vtc",
+    "wi-fi",
+    "wifi",
+]
+
+# Terms retained for deliberate use of the narrower legacy specialist profile.
+ELASTIC_TIER1_TERMS = [
     "elasticsearch",
     "elastic stack",
     "kibana",
@@ -63,7 +117,7 @@ TIER1_TERMS = [
 
 # Tier-2 terms: technical implementation areas Jeremy can engage on, even
 # when no specific product is named.
-TIER2_TERMS = [
+ELASTIC_TIER2_TERMS = [
     "observability",
     "log analytics",
     "log management",
@@ -97,6 +151,17 @@ TIER2_TERMS = [
 # don't prove fit, but they distinguish a services pursuit from a commodity
 # buy.
 DELIVERABLE_TERMS = [
+    "installation",
+    "install",
+    "replacement",
+    "upgrade",
+    "termination",
+    "testing",
+    "commissioning",
+    "repair",
+    "maintenance",
+    "warranty",
+    "as-built",
     "assessment",
     "design",
     "implementation",
@@ -114,11 +179,59 @@ DELIVERABLE_TERMS = [
     "advisory services",
 ]
 
+# Field-install keywords often appear in unrelated equipment, training, and
+# cybersecurity notices. Require an execution signal before the active
+# profile treats a metadata hit as a real installation lead.
+FIELD_EXECUTION_TERMS = [
+    "installation",
+    "install",
+    "installed",
+    "upgrade",
+    "replacement",
+    "replace",
+    "repair",
+    "maintenance",
+    "wiring",
+    "cabling",
+    "pull",
+    "terminate",
+    "termination",
+    "commissioning",
+]
+
+FIELD_TITLE_TERMS = [
+    "security camera",
+    "security cameras",
+    "cctv",
+    "video surveillance",
+    "video monitoring",
+    "camera installation",
+    "access control",
+    "card reader",
+    "badge reader",
+    "structured cabling",
+    "data cabling",
+    "network cabling",
+    "low voltage",
+    "low-voltage",
+    "cat6",
+    "cat 6",
+    "fiber optic",
+    "fiber-optic",
+    "intrusion detection",
+    "alarm system",
+]
+
+PROHIBITED_NOTICE_SIGNALS = [
+    "sole source",
+    "notice of intent",
+]
+
 # Hard exclusions: domain words that almost always indicate a non-fit even
 # when they coincide with one of our keywords (e.g., a janitorial RFQ that
 # happens to mention "performance"). Matching one of these drops the lead.
 HARD_EXCLUSIONS = [
-    "construction",
+    "general construction",
     "roofing",
     "hvac",
     "plumbing",
@@ -139,6 +252,8 @@ HARD_EXCLUSIONS = [
     "grounds maintenance",
     "pest control",
     "food service",
+    "guard services",
+    "security guard",
     "medical supplies",
     "laboratory supplies",
     "uniforms",
@@ -181,16 +296,24 @@ FALSE_POSITIVE_GUARDS = {
 }
 
 # NAICS codes that meaningfully increase confidence in a candidate.
-NAICS_BOOSTS = {
-    "541511": 1,
-    "541512": 1,
-    "541513": 1,
-    "541519": 1,
-    "518210": 1,
-    "517810": 1,
-    "541715": 1,
-    "541330": 0,
-    "334220": 0,
+PROFILE_NAICS_BOOSTS = {
+    "technical_services": {
+        "561621": 2,
+        "238210": 1,
+        "541512": 0,
+        "334290": 0,
+    },
+    "elastic_only": {
+        "541511": 1,
+        "541512": 1,
+        "541513": 1,
+        "541519": 1,
+        "518210": 1,
+        "517810": 1,
+        "541715": 1,
+        "541330": 0,
+        "334220": 0,
+    },
 }
 
 # Notice types we want to bid; everything else still surfaces but doesn't earn
@@ -252,6 +375,8 @@ class ScoreResult:
 
 PROFILES = {
     "technical_services": {
+        "tier1_terms": FIELD_INSTALL_TIER1_TERMS,
+        "tier2_terms": FIELD_INSTALL_TIER2_TERMS,
         "tier1_points": 4,
         "tier2_points": 3,
         "deliverable_points": 2,
@@ -263,6 +388,8 @@ PROFILES = {
         "info_type_points": -1,
     },
     "elastic_only": {
+        "tier1_terms": ELASTIC_TIER1_TERMS,
+        "tier2_terms": ELASTIC_TIER2_TERMS,
         "tier1_points": 3,
         "tier2_points": 2,
         "deliverable_points": 1,
@@ -336,10 +463,29 @@ def _band_for(score: int) -> str:
     return "reject"
 
 
-def _detect_lanes(title_lower: str, desc_lower: str) -> list[str]:
+def _detect_lanes(title_lower: str, desc_lower: str, profile: str) -> list[str]:
     lanes: list[str] = []
     haystack = f"{title_lower} {desc_lower}"
-    lane_terms = {
+    field_install_lanes = {
+        "electronic_security": [
+            "security camera", "security cameras", "cctv", "video surveillance",
+            "video monitoring", "camera installation", "access control",
+            "physical access control", "pacs", "card reader", "badge reader",
+            "door controller", "request to exit", "rex sensor", "maglock",
+            "intrusion detection", "alarm system",
+        ],
+        "cabling_fiber": [
+            "structured cabling", "data cabling", "network cabling", "low voltage",
+            "low-voltage", "cat6", "cat 6", "cat6a", "cat 6a", "fiber optic",
+            "fiber-optic", "patch panel", "termination", "cable testing",
+            "inside plant", "outside plant", "otdr",
+        ],
+        "network_vtc": [
+            "vtc", "video teleconference", "video conference",
+            "unified communications", "av over ip", "av-over-ip", "wi-fi", "wifi",
+        ],
+    }
+    elastic_lanes = {
         "elastic_search": ["elasticsearch", "elastic stack", "kibana", "logstash",
                             "elastic agent", "opensearch", "enterprise search"],
         "ai_retrieval": ["vector search", "semantic search", "hybrid search", "rag",
@@ -355,6 +501,7 @@ def _detect_lanes(title_lower: str, desc_lower: str) -> list[str]:
                          "network modernization", "network engineering",
                          "av over ip", "av-over-ip"],
     }
+    lane_terms = field_install_lanes if profile == "technical_services" else elastic_lanes
     for lane, terms in lane_terms.items():
         if _hits(haystack, terms):
             lanes.append(lane)
@@ -404,7 +551,7 @@ def score_opportunity(
             score += weights["exclusion_points"]
 
     # ---- Tier-1 keyword hits ----
-    tier1_hits = _hits(haystack, TIER1_TERMS)
+    tier1_hits = _hits(haystack, weights["tier1_terms"])
     for hit in dict.fromkeys(tier1_hits):
         where = "title" if hit in title_l else "description"
         reasons.append(
@@ -413,7 +560,7 @@ def score_opportunity(
         score += weights["tier1_points"]
 
     # ---- Tier-2 keyword hits ----
-    tier2_hits = _hits(haystack, TIER2_TERMS)
+    tier2_hits = _hits(haystack, weights["tier2_terms"])
     for hit in dict.fromkeys(tier2_hits):
         where = "title" if hit in title_l else "description"
         reasons.append(
@@ -455,6 +602,46 @@ def score_opportunity(
                 ScoreReason("deliverable_unsupported", f"{hit} (no tier hit)", 0)
             )
 
+    # ---- Field execution guard ----
+    if profile == "technical_services":
+        has_field_keyword = any(
+            reason.kind in {"tier1_keyword", "tier2_keyword"} for reason in reasons
+        )
+        if has_field_keyword and not _hits(haystack, FIELD_EXECUTION_TERMS):
+            positive_metadata_points = sum(
+                reason.points
+                for reason in reasons
+                if reason.kind in {"tier1_keyword", "tier2_keyword", "deliverable"}
+                and reason.points > 0
+            )
+            penalty = positive_metadata_points + 2
+            reasons.append(
+                ScoreReason(
+                    "field_scope_missing",
+                    "field-install keyword without install/upgrade/repair scope",
+                    -penalty,
+                )
+            )
+            score -= penalty
+        if has_field_keyword and not _hits(title_l, FIELD_TITLE_TERMS):
+            reasons.append(
+                ScoreReason(
+                    "field_title_weak",
+                    "field-install evidence appears only outside the title",
+                    -8,
+                )
+            )
+            score -= 8
+
+    # ---- Prohibited notice signals ----
+    prohibited_hits = _hits(haystack, PROHIBITED_NOTICE_SIGNALS)
+    if prohibited_hits:
+        reasons.append(
+            ScoreReason("prohibited_notice", prohibited_hits[0], -20)
+        )
+        score -= 20
+
+
     # ---- Resell / commodity signals ----
     resell_hits = _hits(haystack, RESELL_SIGNALS)
     if resell_hits:
@@ -481,7 +668,7 @@ def score_opportunity(
 
     # ---- NAICS bonus ----
     naics = (opportunity.get("naics_code") or "").strip()
-    for prefix, points in NAICS_BOOSTS.items():
+    for prefix, points in PROFILE_NAICS_BOOSTS[profile].items():
         if naics.startswith(prefix) and points:
             reasons.append(ScoreReason("naics_hint", f"NAICS {prefix}", points))
             score += points
@@ -540,7 +727,7 @@ def score_opportunity(
         )
         score -= 2
 
-    lanes = _detect_lanes(title_l, desc_l)
+    lanes = _detect_lanes(title_l, desc_l, profile)
 
     return ScoreResult(
         notice_id=str(opportunity.get("notice_id") or ""),

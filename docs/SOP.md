@@ -4,17 +4,18 @@
 
 **Owner:** Project operator
 
-**Last updated:** 2026-05-26
+**Last updated:** 2026-05-31
 
 ---
 
 ## 1. What this is
 
-**Active lead profile:** the operator pursues technical services. Use
+**Active lead profile:** the operator pursues small-team field installations. Use
 [`criteria/TECHNICAL_SERVICES_PROFILE.md`](../criteria/TECHNICAL_SERVICES_PROFILE.md) for current
-opportunity research. It covers Elastic/search, AI/RAG/data, observability and
-security analytics, plus VTC/network integration. Use
-[`criteria/ELASTIC_LEAD_PROFILE.md`](../criteria/ELASTIC_LEAD_PROFILE.md) for Elastic-only sweeps.
+opportunity research. It covers security cameras, video monitoring, access
+control, structured cabling, low-voltage data cabling, and bounded fiber work.
+Use [`criteria/ELASTIC_LEAD_PROFILE.md`](../criteria/ELASTIC_LEAD_PROFILE.md)
+only for deliberate legacy specialist sweeps.
 
 Two ways to search SAM.gov contract opportunities:
 
@@ -27,7 +28,7 @@ There's also **`scripts/sync_bulk.py`** which downloads the daily extract and re
 
 For solicitation attachments and statements of work, **`scripts/document_store.py`**
 indexes extracted document text into local Elasticsearch so an agent can search
-evidence such as required platforms, deliverables, clearances, or partner
+evidence such as required systems, deliverables, licenses, insurance, or OEM
 requirements. See
 [`DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md).
 
@@ -85,20 +86,42 @@ python "<PROJECT_DIR>\scripts\search_bulk.py" [keyword] [flags]
 
 Run with `--help` for the full flag list.
 
+### 3.3 Rank simplified-acquisition candidates
+
+Use the SAP selector to find small SAM.gov buys that may help build past
+performance. This path applies hard gates only. It does not score capability
+keywords.
+
+```
+python "<PROJECT_DIR>\scripts\swcb.py" sap
+```
+
+The command prints the observed set-aside and PSC encodings first, then writes:
+
+- `reports/sap-opportunities.md`
+- `reports/sap-opportunities.csv`
+- `reports/sam-opportunity-encodings.md`
+
+The SAM bulk CSV currently does not expose an estimated solicitation-value
+field. The selector automatically uses `estimated_value` if the mirror gains
+that column later. For the current schema, a populated `Award$` value is used
+only as a conservative ceiling fallback; blank values remain eligible and sort
+after populated values.
+
 ---
 
 ## 4. Common search recipes
 
 | Need | Command |
 |------|---------|
-| Opportunities naming Elasticsearch | `search_bulk.py "Elasticsearch" --active-only` |
-| Opportunities naming OpenSearch | `search_bulk.py "OpenSearch" --active-only` |
-| AI search/RAG candidates | `search_bulk.py "retrieval augmented generation" --active-only` and `search_bulk.py "vector search" --active-only` |
-| Observability or log-analytics candidates | `search_bulk.py "observability" --active-only` and `search_bulk.py "log analytics" --active-only` |
-| SIEM candidates for document validation | `search_bulk.py "SIEM" --active-only` |
-| VTC/network engineering candidates | `search_bulk.py "video teleconference" --active-only` and `search_bulk.py "network modernization" --active-only` |
-| Broader IT-services discovery | `search_bulk.py --naics 541512 --active-only` and `search_bulk.py --naics 541519 --active-only` |
-| Sources sought for pipeline scouting | `search_bulk.py "Elastic" --type "Sources Sought"` |
+| Security-camera candidates | `search_bulk.py "security camera" --active-only` and `search_bulk.py "CCTV" --active-only` |
+| Video-monitoring candidates | `search_bulk.py "video monitoring" --active-only` and `search_bulk.py "video surveillance" --active-only` |
+| Access-control candidates | `search_bulk.py "access control" --active-only` and `search_bulk.py "card reader" --active-only` |
+| Structured-cabling candidates | `search_bulk.py "structured cabling" --active-only` and `search_bulk.py "data cabling" --active-only` |
+| Fiber candidates | `search_bulk.py "fiber optic" --active-only` |
+| NAICS 561621 expansion | `search_bulk.py --naics 561621 --active-only` |
+| Filtered NAICS 238210 expansion | `search_bulk.py "cabling" --naics 238210 --active-only` and `search_bulk.py "fiber" --naics 238210 --active-only` |
+| Sources sought for pipeline scouting | `search_bulk.py "data cabling" --type "Sources Sought"` |
 | JSON output for piping to another tool | append `--json` to any of the above |
 
 `--active-only` follows SAM's active field and does not prove that the response
@@ -141,21 +164,18 @@ schtasks /Delete /TN "SAM Daily Sync" /F
 | `--limit N` | Max results | 20 |
 | `--json` | JSON instead of pretty text | off |
 
-### 6.2 NAICS discovery hints for technical services
+### 6.2 NAICS discovery hints for field installations
 
 | NAICS | Candidate category |
 |-------|-------|
-| 541511 | Custom computer programming services |
-| 541512 | Computer systems design services |
-| 541519 | Other computer related services |
-| 518210 | Computing infrastructure, data processing, and hosting services |
-| 541513 | Computer facilities management services |
-| 334220 | Communications equipment candidates, conditional for VTC/network services |
-| 517810 | Telecommunications and communications service candidates |
+| 561621 | Security Systems Services (except Locksmiths) |
+| 238210 | Electrical contractors and other wiring installation contractors; filter for low-voltage, cabling, and fiber scope |
+| 541512 | Computer systems design services; conditional for small integration work |
+| 334290 | Equipment-heavy installation discovery hint only |
 
 These codes broaden discovery only. A public scope document must establish
-Elastic, AI/search/data, logging/observability/security analytics, or
-VTC/network engineering fit before ranking an opportunity.
+camera, video-monitoring, access-control, cabling, fiber, or adjacent
+small-installation fit before ranking an opportunity.
 
 ### 6.3 Set-aside codes
 

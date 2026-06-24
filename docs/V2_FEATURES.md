@@ -18,14 +18,14 @@ rubrics into a deterministic, explainable scorer. Each opportunity gets:
 
 - a numeric **score**
 - a **band** — `strong` / `promising` / `monitor` / `reject`
-- a list of detected **lanes** — e.g. `elastic_search`, `ai_retrieval`,
-  `observability_siem`, `data_platform`, `network_vtc`
+- a list of detected **lanes** — e.g. `electronic_security`,
+  `cabling_fiber`, `network_vtc`
 - a list of **reasons** showing every signal that contributed to (or
   reduced) the score
 
 ### Profiles
 
-- `technical_services` — the broad default profile. Tier-1 keyword = +4,
+- `technical_services` — the small-team field-installation default profile. Tier-1 keyword = +4,
   tier-2 = +3, deliverable = +2.
 - `elastic_only` — the narrow Elastic/search/observability profile.
   Tier-1 = +3, tier-2 = +2, deliverable = +1.
@@ -41,6 +41,9 @@ rubrics into a deterministic, explainable scorer. Each opportunity gets:
   the "promising" band on set-aside + runway alone.
 - Deliverable verbs (`design`, `integration`, `implementation`, ...)
   only earn points when a tier hit is also present.
+- The default field-installation profile demotes metadata hits without
+  installation, upgrade, repair, cabling, or commissioning language and
+  demotes weak matches that appear only outside the title.
 
 ### CLI
 
@@ -201,6 +204,7 @@ Code, Claude Desktop, and Codex:
 | `score_opportunities` | Search the local mirror and return scored, ranked candidates with reasons. |
 | `score_one_opportunity` | Score a single notice already in the local mirror. |
 | `generate_daily_digest` | Produce a fresh digest report; returns counts + file paths. |
+| `publish_research_scan` | Publish one final curated AI research scan into the production Workbench. |
 | `add_to_watchlist` | Add a notice (auto-loads metadata from the mirror if `title` is omitted). |
 | `list_watchlist` | List watchlist entries, optionally filtered by status. |
 | `update_watchlist_status` | Move a watchlist entry to a new status. |

@@ -1,63 +1,79 @@
-# Technical Services Lead Profile
+# Small-Team Field Installation Lead Profile
 
 ## Active Default
 
-the operator's opportunity research should target small-business-friendly technical
-services he can intelligently assess and potentially deliver or partner on.
-Elastic engineering remains a primary strength, but the search should also
-cover AI/search/data and relevant network collaboration infrastructure work.
+The operator's default opportunity research should target bounded field work
+that an owner-led two-to-three-person crew can price, schedule, install, test,
+and warranty. The first lane is security-camera and access-control
+installation. Structured cabling and small fiber jobs are supporting lanes.
 
-Do not default to construction, facility repair, general physical trades, or
-unrelated commodity purchasing. Existing construction research is historical
-test material only unless explicitly requested.
+Do not treat a matching keyword or NAICS code as proof of fit. Inspect the
+public scope, drawings, site-visit rules, licenses, insurance, response SLA,
+equipment sourcing, and completion date before recommending a pursuit.
+
+`criteria/ELASTIC_LEAD_PROFILE.md` remains available as a separate legacy
+specialist lane. It is not the active default.
 
 ## Capability Lanes
 
-### Tier 1 - Direct Technical Fit
+### Tier 1 - Direct Field-Installation Fit
 
-- Elasticsearch, Elastic Stack, Kibana, Logstash, Beats, Elastic Agent, Fleet,
-  Elastic Security, and OpenSearch engineering.
-- Search platforms, enterprise search, indexing, relevance, vector search,
-  hybrid search, semantic search, knowledge retrieval, and search migration.
-- AI retrieval work: RAG, document intelligence, knowledge bases, LLM search,
-  embeddings, vector databases, AI assistants, agentic retrieval, and
-  generative-AI applications grounded in enterprise content.
-- Observability, log analytics, APM, telemetry ingestion, operational
-  dashboards, SIEM, detection engineering, and security analytics.
-- Data integration, ingestion pipelines, dashboarding, platform configuration,
-  implementation, tuning, assessment, training, and migration work related to
-  those systems.
+- Security-camera, CCTV, and video-surveillance installation, replacement, or
+  upgrade work.
+- Video-monitoring systems: cameras, NVRs, VMS workstations, displays, PoE
+  components, cabling, testing, commissioning, and user handoff.
+- Electronic access control: card readers, badge readers, door controllers,
+  request-to-exit sensors, strikes, maglocks, small PACS upgrades, and related
+  cabling.
+- Structured data cabling: low-voltage copper, Cat5e/Cat6/Cat6A, patch panels,
+  racks, drops, labeling, termination, certification testing, and as-builts.
+- Bounded fiber runs: inside-plant or clearly scoped outside-plant pulls,
+  termination, testing, and documentation.
 
-### Tier 2 - Adjacent Technical Fit
+### Tier 2 - Adjacent Fit
 
-- AI/ML engineering services, data engineering, DevSecOps automation, cloud
-  platform integration, cybersecurity analytics, and zero-trust telemetry when
-  the statement of work includes a deliverable the operator can evaluate.
-- Network engineering, VTC, video teleconferencing, unified communications,
-  collaboration systems, secure conferencing, AV-over-IP, and network
-  modernization where the requirement includes design, integration,
-  configuration, engineering, monitoring, or support services.
+- Intrusion detection, alarm, intercom, and small electronic-security upgrades
+  when licensing, code, and OEM dependencies are documented and executable.
+- Small network, Wi-Fi, AV-over-IP, VTC, or unified-communications installs
+  when physical installation, configuration, testing, and handoff are the core
+  deliverables.
+- Recurring maintenance for systems the operator can support within the
+  required response time and geographic radius.
 
 ### Conditional Fits
 
-- Hardware, appliances, software licensing, subscriptions, maintenance, or
-  OEM-brand requirements are candidates only when there is a meaningful
-  services component or an established reseller/partner route.
-- Staffing, managed operations, and broad enterprise programs are candidates
-  only when scope, team size, security clearance, location, and subcontracting
-  path are realistically addressable.
+- Fire-alarm, life-safety, electrical-power, and code-inspection work require
+  explicit license and code-responsibility review before pursuit.
+- Proprietary platforms such as LenelS2, Genetec, AMAG, Gallagher, Milestone,
+  and manufacturer-specific alarm systems require documented authorized-
+  installer, reseller, training, or partner routes when the notice requires
+  them.
+- Multi-site and out-of-area work require a realistic crew schedule, travel
+  budget, material plan, and warranty-response plan.
+- Product-heavy work is viable only when installation is material to the scope
+  and sourcing, warranty, margin, and Section 889 restrictions are understood.
+
+### Explicit-Request Home-Office Reseller Lane
+
+When the operator explicitly asks for desk-based product sourcing, scan
+commercial-product RFQs separately from the default field-installation digest.
+Prefer one or a few standard products that a distributor can fulfill directly.
+Verify dealer or reseller authorization, exact specifications, freight,
+delivery acceptance, payment timing, cash-flow exposure, Buy American
+requirements, and whether the nonmanufacturer rule applies. Do not promote
+broad commodity results into the default field-installation scan.
 
 ## Discovery Vocabulary
 
-Search individually and in combinations; broad terms require document review.
+Search lanes independently. Broad terms require document review.
 
 | Lane | Terms |
 | --- | --- |
-| Elastic / search | `Elasticsearch`, `"Elastic Stack"`, `Kibana`, `Logstash`, `"Elastic Agent"`, `Fleet`, `OpenSearch`, `"enterprise search"`, `"search platform"` |
-| AI / retrieval | `RAG`, `"retrieval augmented generation"`, `"vector search"`, `"semantic search"`, `"hybrid search"`, `"knowledge base"`, `"document intelligence"`, `"AI assistant"`, `LLM`, `"generative AI"` |
-| Observability / security analytics | `observability`, `telemetry`, `"log analytics"`, `"log management"`, `SIEM`, `"security analytics"`, `"detection engineering"`, `APM` |
-| Services / platform | `"data integration"`, `"data pipeline"`, `DevSecOps`, `"cloud migration"`, `"platform engineering"`, `"technical support services"` |
-| Network / VTC | `VTC`, `"video teleconference"`, `"video conferencing"`, `"unified communications"`, `"collaboration system"`, `"network modernization"`, `"network engineering"`, `"AV over IP"` |
+| Cameras / video | `"security camera"`, `CCTV`, `"video surveillance"`, `"video monitoring"`, `camera installation`, `NVR`, `"video management system"`, `VMS` |
+| Access control | `"access control"`, `"physical access control"`, `PACS`, `"card reader"`, `"badge reader"`, `CAC`, `PIN`, `REX`, `maglock`, `"door controller"` |
+| Cabling | `"structured cabling"`, `"data cabling"`, `"network cabling"`, `"low voltage"`, `Cat6`, `Cat6A`, `"patch panel"`, `termination`, `"cable testing"` |
+| Fiber | `"fiber optic"`, `"fiber-optic"`, `"inside plant"`, `ISP`, `"outside plant"`, `OSP`, splicing, OTDR |
+| Adjacent systems | `"intrusion detection"`, `"alarm system"`, `intercom`, `Wi-Fi`, `"AV over IP"`, `VTC`, `"unified communications"` |
 
 ## NAICS Discovery Hints
 
@@ -65,38 +81,34 @@ NAICS codes are search-expansion hints, never proof of fit.
 
 | NAICS | Candidate category |
 | --- | --- |
-| `541511` | Custom computer programming services |
-| `541512` | Computer systems design services |
-| `541519` | Other computer related services |
-| `518210` | Computing infrastructure, data processing, and hosting |
-| `541513` | Computer facilities management services |
-| `334220` | Communications equipment opportunities, conditional for VTC/network services |
-| `517810` | Telecommunications and related communications services candidates |
+| `561621` | Security Systems Services (except Locksmiths) |
+| `238210` | Electrical contractors and other wiring installation contractors; filter for low-voltage, cabling, and fiber scope |
+| `541512` | Computer systems design services; conditional for small integration work |
+| `334290` | Other communications equipment manufacturing; discovery hint for equipment-heavy installs only |
 
 ## Set-Aside and Pursuit Rules
 
-- Prioritize Total Small Business (`SBA`) opportunities and display other
-  set-asides separately when found.
-- Do not claim eligibility for 8(a), SDVOSB, WOSB, HUBZone, or any contract
-  vehicle until the operator confirms that status or an eligible partner path.
+- Prioritize Total Small Business (`SBA`) opportunities.
+- Do not claim eligibility for SDVOSB or another special status until the
+  operator confirms certification.
 - Treat Sources Sought and RFIs as pipeline/positioning opportunities, not
   current bids.
-- For active solicitations, filter actual response deadlines against today's
-  exact date in the operator's local timezone (`America/New_York` by default);
-  `active=Yes` alone is insufficient.
+- Filter response deadlines against today's exact date in
+  `America/New_York`; `active=Yes` alone is insufficient.
+- Prefer one-site or tightly bounded work with a clear bill of materials,
+  scheduled site access, and a realistic warranty radius.
 
 ## Default Exclusions
 
-- Construction, facility repair, janitorial, trades, and unrelated equipment
-  installation.
-- Medical, laboratory, industrial, or office supply results caused by acronym
-  collisions such as `SIEM` matching `Siemens`.
-- Pure product resale, software renewal, or brand-name appliance buys without
-  a validated delivery/partner path and services relevance.
-- Expired, awarded, sole-source, notice-of-intent, draft, or inaccessible
+- Large construction programs, high-voltage electrical work, broad facility
+  repair, unrelated trades, guard services, nationwide staffing, and 24/7
+  operations.
+- Closed, awarded, sole-source, notice-of-intent, draft, or inaccessible
   solicitations when searching for work to pursue now.
-- Requirements dominated by clearances, large 24/7 operations, nationwide
-  staffing, or mandatory vehicles/certifications not yet known to be available.
+- Proprietary sustainment work without the required OEM route.
+- Product resale without a meaningful installation component.
+- Work where licensing, insurance, site access, material lead times, schedule,
+  or warranty response cannot be met by the planned crew.
 
 ## Ranking
 
@@ -105,27 +117,28 @@ candidates, retrieving a public requirements document.
 
 | Score | Evidence |
 | --- | --- |
-| `+4` | Public notice or document explicitly names Elastic/OpenSearch, RAG/vector/semantic search, or a directly matching AI-search platform deliverable. |
-| `+3` | Public document establishes observability/SIEM/log analytics, AI/data implementation, VTC/UC/network engineering, or technical integration services. |
-| `+2` | Bounded service deliverable: assessment, design, implementation, configuration, migration, dashboard, integration, training, or support task. |
+| `+4` | Public notice or document explicitly defines a security-camera, video-monitoring, access-control, structured-cabling, or bounded fiber installation. |
+| `+3` | Public document establishes a small adjacent installation, upgrade, testing, commissioning, or maintenance scope. |
+| `+2` | Bounded field deliverable: install, terminate, test, commission, train, document, repair, or warranty task. |
 | `+1` | Total Small Business set-aside, subject to confirming the bidding entity qualifies. |
-| `+1` | Manageable response runway and reasonably scoped single-agency/single-system work. |
-| `-3` | Product/reseller-only requirement, broad staffing/operations program, or weak keyword-only match. |
-| `-5` | Unrelated trade/supply work, acronym false positive, closed deadline, or prohibited notice type. |
+| `+1` | Manageable response runway and plausibly executable one-site or tightly bounded scope. |
+| `-3` | Product-only buy, proprietary sustainment without an OEM route, broad staffing/operations program, or weak keyword-only match. |
+| `-5` | Unrelated construction/trade work, closed deadline, prohibited notice type, or a scope the planned crew cannot execute. |
 
 ## Required Evidence Review
 
 For the strongest candidates, ingest a public SOW, PWS, specifications file,
 requirements file, or amendment into Elasticsearch and retrieve evidence for:
 
-- Required platforms, products, protocols, AI/search/data capabilities, and
-  engineering deliverables.
-- Hardware/software/OEM/reseller/partner requirements.
-- Cloud environment, security controls, FedRAMP, data sensitivity, clearances,
-  on-site work, and travel.
-- Required certifications, past performance, contract vehicle, labor
-  categories, and subcontracting constraints.
-- Delivery schedule, period of performance, response deadline, set-aside, and
-  submission requirements.
+- Site count, camera count, reader/door count, drop count, fiber length, and
+  required drawings or as-builts.
+- Hardware, software, VMS/PACS/OEM, sourcing, NDAA Section 889, reseller,
+  warranty, and authorized-installer requirements.
+- Cabling pathways, conduit, power, fire-alarm integration, code inspection,
+  testing, commissioning, and training.
+- License, technician registration, insurance, site access, past performance,
+  and special certification requirements.
+- Site visit, completion date, response deadline, set-aside, quote contents,
+  and warranty-response SLA.
 
 For each unproven requirement, write `not found in indexed document`.
