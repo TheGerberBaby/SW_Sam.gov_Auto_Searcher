@@ -1,165 +1,124 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" role="img" aria-labelledby="title desc">
-  <title id="title">SW SAM.gov Auto Searcher data-flow schematic</title>
-  <desc id="desc">Data-flow diagram in five stages: acquire (public SAM sources, attachment metadata, award APIs, and vendor discovery sources), store (SQLite, Markdown cache, Elasticsearch, API caches, watchlist DB, panel verdicts, and vendor jobs), analyze (search, scoring, document evidence, panel review, simplified acquisition scans, subcontractor sourcing, and digest), surface (local dashboard and MCP server to Codex/Claude), and decide (daily digest, Workbench research scan, panel verdict, vendor package, and pursuit decision). Solid arrows are data flow, dashed blue arrows are reads, dotted purple arrows are guidance and on-demand calls.</desc>
+  <title id="title">SW SAM.gov Auto Searcher workflow schematic</title>
+  <desc id="desc">A simplified six-column workflow schematic for SW SAM.gov Auto Searcher. It shows source collection, normalization, local stores, analysis tools, operator surfaces, and decision outputs as grouped stages.</desc>
   <defs>
     <style>
-      .page { fill: #f7fafc; }
-      .title { font: 700 30px "Segoe UI", Arial, sans-serif; fill: #102033; }
+      .page { fill: #f6f8fb; }
+      .title { font: 760 32px "Segoe UI", Arial, sans-serif; fill: #102033; }
       .subtitle { font: 400 15px "Segoe UI", Arial, sans-serif; fill: #506070; }
-      .lane { fill: #ffffff; stroke: #d5dde8; stroke-width: 2; }
-      .laneTitle { font: 700 15px "Segoe UI", Arial, sans-serif; fill: #223044; }
-      .stageCap { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #6b7f99; letter-spacing: .4px; }
-      .boxText { font: 700 14px "Segoe UI", Arial, sans-serif; fill: #111827; }
-      .boxSub { font: 400 11.5px "Segoe UI", Arial, sans-serif; fill: #4b5563; }
-      .label { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #34506e; }
-      .rlabel { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #2f6fb0; }
-      .glabel { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #7c3aed; }
-      .small { font: 400 11px "Segoe UI", Arial, sans-serif; fill: #64748b; }
-      .legendText { font: 400 12px "Segoe UI", Arial, sans-serif; fill: #34506e; }
-      .badgeNum { font: 700 13px "Segoe UI", Arial, sans-serif; fill: #ffffff; }
-      .arrow { fill: none; stroke: #314866; stroke-width: 2.4; marker-end: url(#aHead); }
-      .readArrow { fill: none; stroke: #2f6fb0; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#aHeadRead); }
-      .guideArrow { fill: none; stroke: #8b5cf6; stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; marker-end: url(#aHeadGuide); }
+      .column { fill: #ffffff; stroke: #d6dee9; stroke-width: 2; }
+      .columnTitle { font: 760 17px "Segoe UI", Arial, sans-serif; fill: #1f2d44; }
+      .columnSub { font: 400 12px "Segoe UI", Arial, sans-serif; fill: #64748b; }
+      .stepNum { font: 760 13px "Segoe UI", Arial, sans-serif; fill: #ffffff; }
+      .cardTitle { font: 730 14px "Segoe UI", Arial, sans-serif; fill: #111827; }
+      .cardSub { font: 400 11.5px "Segoe UI", Arial, sans-serif; fill: #4b5563; }
+      .noteTitle { font: 760 13px "Segoe UI", Arial, sans-serif; fill: #253247; }
+      .noteText { font: 400 12px "Segoe UI", Arial, sans-serif; fill: #4f5f73; }
+      .pillText { font: 700 11px "Segoe UI", Arial, sans-serif; fill: #334155; }
       .source { fill: #e8f2ff; stroke: #4f8edb; }
       .engine { fill: #ecfdf5; stroke: #17a36b; }
       .store { fill: #fff7ed; stroke: #f08a24; }
       .surface { fill: #eef2ff; stroke: #6366f1; }
       .out { fill: #fdf2f8; stroke: #db4f92; }
       .guide { fill: #f8fafc; stroke: #94a3b8; }
+      .band { fill: #102033; }
+      .bandText { font: 700 13px "Segoe UI", Arial, sans-serif; fill: #e5eefb; }
+      .shadow { filter: url(#shadow); }
     </style>
-    <marker id="aHead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#314866"/></marker>
-    <marker id="aHeadRead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#2f6fb0"/></marker>
-    <marker id="aHeadGuide" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#8b5cf6"/></marker>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity=".10"/></filter>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="122%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0f172a" flood-opacity=".10"/>
+    </filter>
   </defs>
 
   <rect class="page" width="1500" height="820"/>
-  <text class="title" x="40" y="50">SW SAM.gov Auto Searcher — data flow</text>
-  <text class="subtitle" x="40" y="76">Read left to right: 1 acquire → 2 normalize + store → 3 analyze evidence + feasibility → 4 surface → 5 decide</text>
+  <text class="title" x="40" y="52">SW SAM.gov Auto Searcher - workflow at a glance</text>
+  <text class="subtitle" x="40" y="78">Read left to right. Each column is a stage; cards inside the column are the main moving parts.</text>
 
-  <!-- ===== legend ===== -->
-  <rect class="lane" x="980" y="28" width="490" height="84" rx="14" filter="url(#shadow)"/>
-  <text class="laneTitle" x="998" y="50" font-size="13">How to read this</text>
-  <path class="arrow" d="M998,64 L1040,64"/><text class="legendText" x="1050" y="68">solid = data flow (write · serve · produce)</text>
-  <path class="readArrow" d="M998,84 L1040,84"/><text class="legendText" x="1050" y="88">dashed blue = read / query a store</text>
-  <path class="guideArrow" d="M998,104 L1040,104"/><text class="legendText" x="1050" y="108">dotted purple = guidance &amp; on-demand calls</text>
+  <rect class="band shadow" x="40" y="104" width="1420" height="54" rx="12"/>
+  <text class="bandText" x="64" y="136">Goal: find realistic small-team field-installation opportunities, inspect public attachments, ground the go/no-go call in evidence, and prepare pursuit or subcontractor follow-up.</text>
 
-  <!-- ===== stage captions + numbered markers (gap centers) ===== -->
-  <text class="stageCap" x="142" y="126" text-anchor="middle">ACQUIRE</text>
-  <text class="stageCap" x="630" y="126" text-anchor="middle">STORE</text>
-  <text class="stageCap" x="871" y="126" text-anchor="middle">ANALYZE</text>
-  <text class="stageCap" x="1115" y="126" text-anchor="middle">SURFACE</text>
-  <text class="stageCap" x="1359" y="126" text-anchor="middle">DECIDE</text>
-  <circle cx="261" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="261" y="164" text-anchor="middle">1</text>
-  <circle cx="505" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="505" y="164" text-anchor="middle">2</text>
-  <circle cx="749" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="749" y="164" text-anchor="middle">3</text>
-  <circle cx="993" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="993" y="164" text-anchor="middle">4</text>
-  <circle cx="1237" cy="160" r="12" fill="#1f2d44"/><text class="badgeNum" x="1237" y="164" text-anchor="middle">5</text>
+  <!-- Columns -->
+  <rect class="column shadow" x="40" y="188" width="210" height="450" rx="16"/>
+  <rect class="column shadow" x="270" y="188" width="210" height="450" rx="16"/>
+  <rect class="column shadow" x="500" y="188" width="210" height="450" rx="16"/>
+  <rect class="column shadow" x="730" y="188" width="210" height="450" rx="16"/>
+  <rect class="column shadow" x="960" y="188" width="210" height="450" rx="16"/>
+  <rect class="column shadow" x="1190" y="188" width="270" height="450" rx="16"/>
 
-  <!-- ===== Lane 1: Public Sources ===== -->
-  <rect class="lane" x="30" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="50" y="170">Public Sources</text>
-  <rect class="box source" x="50" y="186" width="178" height="62" rx="12"/><text class="boxText" x="66" y="212">SAM.gov Extract</text><text class="boxSub" x="66" y="232">daily public CSV</text>
-  <rect class="box source" x="50" y="258" width="178" height="62" rx="12"/><text class="boxText" x="66" y="284">SAM.gov API</text><text class="boxSub" x="66" y="304">live notice query</text>
-  <rect class="box source" x="50" y="330" width="178" height="62" rx="12"/><text class="boxText" x="66" y="356">SAM Attachments</text><text class="boxSub" x="66" y="376">resource IDs + files</text>
-  <rect class="box source" x="50" y="402" width="178" height="62" rx="12"/><text class="boxText" x="66" y="428">USAspending API</text><text class="boxSub" x="66" y="448">federal awards</text>
-  <rect class="box source" x="50" y="474" width="178" height="62" rx="12"/><text class="boxText" x="66" y="500">eCFR API</text><text class="boxSub" x="66" y="520">FAR &amp; CFR text</text>
-  <rect class="box source" x="50" y="546" width="178" height="62" rx="12"/><text class="boxText" x="66" y="572">Google Places</text><text class="boxSub" x="66" y="592">local vendors</text>
+  <!-- Column headers -->
+  <circle cx="66" cy="216" r="14" fill="#1f2d44"/><text class="stepNum" x="66" y="221" text-anchor="middle">1</text>
+  <text class="columnTitle" x="92" y="214">Acquire</text>
+  <text class="columnSub" x="92" y="234">public market inputs</text>
 
-  <!-- ===== Lane 2: Ingest ===== -->
-  <rect class="lane" x="274" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="294" y="170">Ingest scripts</text>
-  <rect class="box engine" x="294" y="186" width="178" height="64" rx="12"/><text class="boxText" x="310" y="212">sync_bulk.py</text><text class="boxSub" x="310" y="232">download &amp; normalize</text>
-  <rect class="box engine" x="294" y="330" width="178" height="78" rx="12"/><text class="boxText" x="310" y="356">document_store.py</text><text class="boxSub" x="310" y="376">download → .md</text><text class="boxSub" x="310" y="393">chunk → index</text>
-  <rect class="box engine" x="294" y="474" width="178" height="64" rx="12"/><text class="boxText" x="310" y="500">usaspending · ecfr</text><text class="boxSub" x="310" y="520">fetch + cache</text>
-  <rect class="box engine" x="294" y="548" width="178" height="64" rx="12"/><text class="boxText" x="310" y="574">source_vendors.py</text><text class="boxSub" x="310" y="594">sub lookup + script</text>
+  <circle cx="296" cy="216" r="14" fill="#1f2d44"/><text class="stepNum" x="296" y="221" text-anchor="middle">2</text>
+  <text class="columnTitle" x="322" y="214">Normalize</text>
+  <text class="columnSub" x="322" y="234">download, convert, cache</text>
 
-  <!-- ===== Lane 3: Stores ===== -->
-  <rect class="lane" x="518" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="538" y="170">Local Stores</text>
-  <rect class="box store" x="538" y="176" width="178" height="74" rx="12"/><text class="boxText" x="554" y="202">SQLite Mirror</text><text class="boxSub" x="554" y="221">data/contracts.db</text><text class="boxSub" x="554" y="238">opportunities</text>
-  <rect class="box store" x="538" y="262" width="178" height="74" rx="12"/><text class="boxText" x="554" y="288">Elasticsearch</text><text class="boxSub" x="554" y="307">documents_v1</text><text class="boxSub" x="554" y="324">evidence chunks</text>
-  <rect class="box store" x="538" y="348" width="178" height="62" rx="12"/><text class="boxText" x="554" y="374">API caches</text><text class="boxSub" x="554" y="394">usaspending + eCFR</text>
-  <rect class="box store" x="538" y="420" width="178" height="40" rx="12"/><text class="boxText" x="554" y="445">Markdown Cache</text>
-  <rect class="box store" x="538" y="468" width="178" height="62" rx="12"/><text class="boxText" x="554" y="494">Watchlist DB</text><text class="boxSub" x="554" y="514">pursuits + digests</text>
-  <rect class="box store" x="538" y="542" width="178" height="62" rx="12"/><text class="boxText" x="554" y="568">Vendor Jobs</text><text class="boxSub" x="554" y="588">data/vendor-sourcing</text>
-  <rect class="box store" x="538" y="616" width="178" height="50" rx="12"/><text class="boxText" x="554" y="646">Panel Verdicts</text>
+  <circle cx="526" cy="216" r="14" fill="#1f2d44"/><text class="stepNum" x="526" y="221" text-anchor="middle">3</text>
+  <text class="columnTitle" x="552" y="214">Store</text>
+  <text class="columnSub" x="552" y="234">local working memory</text>
 
-  <!-- ===== Lane 4: Analyze (top corridor kept clear for cross-lane reads) ===== -->
-  <rect class="lane" x="762" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="782" y="170">Analyze</text>
-  <rect class="box engine" x="782" y="214" width="178" height="58" rx="12"/><text class="boxText" x="798" y="239">sap_opps.py</text><text class="boxSub" x="798" y="258">small buys shortlist</text>
-  <rect class="box engine" x="782" y="286" width="178" height="58" rx="12"/><text class="boxText" x="798" y="311">panel.py</text><text class="boxSub" x="798" y="330">expert verdicts</text>
-  <rect class="box engine" x="782" y="358" width="178" height="58" rx="12"/><text class="boxText" x="798" y="383">search_bulk.py</text><text class="boxSub" x="798" y="402">+ find_contracts.py</text>
-  <rect class="box engine" x="782" y="430" width="178" height="58" rx="12"/><text class="boxText" x="798" y="455">scoring.py</text><text class="boxSub" x="798" y="474">deterministic rubric</text>
-  <rect class="box engine" x="782" y="502" width="178" height="58" rx="12"/><text class="boxText" x="798" y="527">subcontract_opps</text><text class="boxSub" x="798" y="546">prime + sub path</text>
-  <rect class="box engine" x="782" y="574" width="178" height="58" rx="12"/><text class="boxText" x="798" y="599">digest.py</text><text class="boxSub" x="798" y="618">rank + report</text>
+  <circle cx="756" cy="216" r="14" fill="#1f2d44"/><text class="stepNum" x="756" y="221" text-anchor="middle">4</text>
+  <text class="columnTitle" x="782" y="214">Analyze</text>
+  <text class="columnSub" x="782" y="234">fit, risk, evidence</text>
 
-  <!-- ===== Lane 5: Surfaces ===== -->
-  <rect class="lane" x="1006" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="1026" y="170">Operator Surfaces</text>
-  <rect class="box surface" x="1026" y="186" width="178" height="102" rx="12"/><text class="boxText" x="1042" y="214">Local Dashboard</text><text class="boxSub" x="1042" y="234">leads · pursuits · setup</text><text class="boxSub" x="1042" y="251">panel · vendors</text><text class="boxSub" x="1042" y="268">installable PWA</text>
-  <rect class="box surface" x="1026" y="300" width="178" height="92" rx="12"/><text class="boxText" x="1042" y="328">MCP Server</text><text class="boxSub" x="1042" y="347">search · ingest · publish</text><text class="boxSub" x="1042" y="364">panel · vendor jobs</text><text class="boxSub" x="1042" y="381">reads SQLite + ES</text>
-  <rect class="box surface" x="1026" y="430" width="178" height="70" rx="12"/><text class="boxText" x="1042" y="458">Codex / Claude</text><text class="boxSub" x="1042" y="478">AI clients via MCP</text>
+  <circle cx="986" cy="216" r="14" fill="#1f2d44"/><text class="stepNum" x="986" y="221" text-anchor="middle">5</text>
+  <text class="columnTitle" x="1012" y="214">Operate</text>
+  <text class="columnSub" x="1012" y="234">human and AI surfaces</text>
 
-  <!-- ===== Lane 6: Outputs ===== -->
-  <rect class="lane" x="1250" y="138" width="218" height="552" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="1270" y="170">Outputs</text>
-  <rect class="box out" x="1270" y="184" width="178" height="72" rx="12"/><text class="boxText" x="1286" y="212">Daily Digest</text><text class="boxSub" x="1286" y="232">ranked markdown + HTML</text>
-  <rect class="box out" x="1270" y="296" width="178" height="72" rx="12"/><text class="boxText" x="1286" y="324">Workbench Scan</text><text class="boxSub" x="1286" y="344">assess · monitor · reject</text>
-  <rect class="box out" x="1270" y="408" width="178" height="72" rx="12"/><text class="boxText" x="1286" y="436">Panel Verdict</text><text class="boxSub" x="1286" y="456">grounded go/no-go</text>
-  <rect class="box out" x="1270" y="520" width="178" height="72" rx="12"/><text class="boxText" x="1286" y="548">Vendor Package</text><text class="boxSub" x="1286" y="568">calls · email · report</text>
+  <circle cx="1216" cy="216" r="14" fill="#1f2d44"/><text class="stepNum" x="1216" y="221" text-anchor="middle">6</text>
+  <text class="columnTitle" x="1242" y="214">Decide</text>
+  <text class="columnSub" x="1242" y="234">pursuit outputs</text>
 
-  <!-- ===== Guidance lane ===== -->
-  <rect class="lane" x="274" y="704" width="1194" height="92" rx="18" filter="url(#shadow)"/>
-  <text class="laneTitle" x="294" y="732">Research Guidance — read by the engine and the AI clients</text>
-  <rect class="box guide" x="300" y="746" width="150" height="38" rx="10"/><text class="boxSub" x="316" y="770">PROFILE.md</text>
-  <rect class="box guide" x="470" y="746" width="236" height="38" rx="10"/><text class="boxSub" x="486" y="770">criteria/ — fit, panel, vendor rules</text>
-  <rect class="box guide" x="726" y="746" width="180" height="38" rx="10"/><text class="boxSub" x="742" y="770">tasks/ — roadmap spine</text>
-  <rect class="box guide" x="926" y="746" width="150" height="38" rx="10"/><text class="boxSub" x="942" y="770">prompts/*.md</text>
-  <rect class="box guide" x="1096" y="746" width="180" height="38" rx="10"/><text class="boxSub" x="1112" y="770">adapters/skills/*</text>
+  <!-- Acquire cards -->
+  <rect class="source" x="62" y="266" width="166" height="52" rx="10"/><text class="cardTitle" x="78" y="289">SAM.gov extract</text><text class="cardSub" x="78" y="306">daily opportunity CSV</text>
+  <rect class="source" x="62" y="332" width="166" height="52" rx="10"/><text class="cardTitle" x="78" y="355">SAM.gov live API</text><text class="cardSub" x="78" y="372">same-day lookup</text>
+  <rect class="source" x="62" y="398" width="166" height="52" rx="10"/><text class="cardTitle" x="78" y="421">Public attachments</text><text class="cardSub" x="78" y="438">SOW, PWS, RFQ files</text>
+  <rect class="source" x="62" y="464" width="166" height="52" rx="10"/><text class="cardTitle" x="78" y="487">USAspending</text><text class="cardSub" x="78" y="504">incumbent context</text>
+  <rect class="source" x="62" y="530" width="166" height="52" rx="10"/><text class="cardTitle" x="78" y="553">Google Places</text><text class="cardSub" x="78" y="570">local subs/vendors</text>
 
-  <!-- ============ ARROWS ============ -->
-  <!-- 1. ACQUIRE: sources -> ingest -->
-  <path class="arrow" d="M228,217 L294,217"/><text class="label" x="240" y="208">CSV</text>
-  <path class="arrow" d="M228,361 L294,361"/><text class="label" x="236" y="352">public files</text>
-  <path class="arrow" d="M228,433 L294,500"/>
-  <path class="arrow" d="M228,505 L294,512"/><text class="label" x="232" y="468">JSON</text>
-  <!-- live API fallback: SAM.gov API bypasses the mirror, straight to search -->
-  <path class="readArrow" d="M228,289 L256,289 L256,146 L850,146 L850,300"/>
-  <text class="rlabel" x="540" y="140" text-anchor="middle">live API fallback (skips the mirror)</text>
+  <!-- Normalize cards -->
+  <rect class="engine" x="292" y="266" width="166" height="58" rx="10"/><text class="cardTitle" x="308" y="290">sync_bulk.py</text><text class="cardSub" x="308" y="307">refresh SAM mirror</text>
+  <rect class="engine" x="292" y="344" width="166" height="72" rx="10"/><text class="cardTitle" x="308" y="368">document_store.py</text><text class="cardSub" x="308" y="385">download attachment</text><text class="cardSub" x="308" y="402">convert PDF to Markdown</text>
+  <rect class="engine" x="292" y="436" width="166" height="58" rx="10"/><text class="cardTitle" x="308" y="460">source_vendors.py</text><text class="cardSub" x="308" y="477">build call script</text>
+  <rect class="engine" x="292" y="514" width="166" height="58" rx="10"/><text class="cardTitle" x="308" y="538">API helpers</text><text class="cardSub" x="308" y="555">awards and clauses</text>
 
-  <!-- 2. STORE: ingest -> stores -->
-  <path class="arrow" d="M472,217 L538,213"/><text class="label" x="482" y="206">write opps</text>
-  <path class="arrow" d="M472,361 L538,299"/><text class="label" x="478" y="344">index</text>
-  <path class="arrow" d="M472,390 L538,440"/><text class="label" x="484" y="422">save .md</text>
-  <path class="arrow" d="M472,505 L538,385"/><text class="label" x="480" y="455">cache</text>
+  <!-- Store cards -->
+  <rect class="store" x="522" y="266" width="166" height="52" rx="10"/><text class="cardTitle" x="538" y="289">contracts.db</text><text class="cardSub" x="538" y="306">opportunity mirror</text>
+  <rect class="store" x="522" y="332" width="166" height="52" rx="10"/><text class="cardTitle" x="538" y="355">Elasticsearch</text><text class="cardSub" x="538" y="372">document evidence</text>
+  <rect class="store" x="522" y="398" width="166" height="52" rx="10"/><text class="cardTitle" x="538" y="421">Markdown cache</text><text class="cardSub" x="538" y="438">inspectable .md files</text>
+  <rect class="store" x="522" y="464" width="166" height="52" rx="10"/><text class="cardTitle" x="538" y="487">watchlist.db</text><text class="cardSub" x="538" y="504">pursuits and scans</text>
+  <rect class="store" x="522" y="530" width="166" height="52" rx="10"/><text class="cardTitle" x="538" y="553">Job stores</text><text class="cardSub" x="538" y="570">panel and vendor queues</text>
 
-  <!-- 3. ANALYZE: stores -> analyze (reads) -->
-  <path class="readArrow" d="M716,222 L782,322"/><text class="rlabel" x="722" y="276">read</text>
-  <path class="readArrow" d="M716,236 L782,408"/><text class="rlabel" x="724" y="372">read opps</text>
-  <path class="arrow" d="M871,450 L871,470"/><text class="label" x="878" y="464">rank</text>
+  <!-- Analyze cards -->
+  <rect class="engine" x="752" y="266" width="166" height="52" rx="10"/><text class="cardTitle" x="768" y="289">Search + score</text><text class="cardSub" x="768" y="306">fit rubric and gates</text>
+  <rect class="engine" x="752" y="332" width="166" height="52" rx="10"/><text class="cardTitle" x="768" y="355">Document search</text><text class="cardSub" x="768" y="372">scope and blockers</text>
+  <rect class="engine" x="752" y="398" width="166" height="52" rx="10"/><text class="cardTitle" x="768" y="421">Panel review</text><text class="cardSub" x="768" y="438">eligibility, fit, red team</text>
+  <rect class="engine" x="752" y="464" width="166" height="52" rx="10"/><text class="cardTitle" x="768" y="487">Sub path finder</text><text class="cardSub" x="768" y="504">prime plus local crew</text>
+  <rect class="engine" x="752" y="530" width="166" height="52" rx="10"/><text class="cardTitle" x="768" y="553">Daily digest</text><text class="cardSub" x="768" y="570">ranked report</text>
 
-  <!-- 4. SURFACE: analyze -> dashboard (results) ; stores -> MCP (reads) -->
-  <path class="arrow" d="M960,326 L1026,222"/><text class="label" x="966" y="268">results</text>
-  <path class="arrow" d="M960,410 L1026,244"/>
-  <path class="arrow" d="M960,500 L1026,262"/>
-  <path class="readArrow" d="M716,290 L1026,308"/><text class="rlabel" x="852" y="288" text-anchor="middle">search_documents</text>
-  <!-- dashboard runs the engine on demand (scan / score) -->
-  <path class="guideArrow" d="M1026,256 L968,386"/><text class="glabel" x="958" y="300" text-anchor="end">scan on demand</text>
-  <!-- MCP -> AI clients -->
-  <path class="arrow" d="M1115,384 L1115,430"/><text class="label" x="1122" y="412">tools</text>
+  <!-- Operate cards -->
+  <rect class="surface" x="982" y="266" width="166" height="66" rx="10"/><text class="cardTitle" x="998" y="290">Workbench</text><text class="cardSub" x="998" y="307">phone-friendly dashboard</text><text class="cardSub" x="998" y="324">leads, scans, pursuits</text>
+  <rect class="surface" x="982" y="352" width="166" height="66" rx="10"/><text class="cardTitle" x="998" y="376">MCP server</text><text class="cardSub" x="998" y="393">tools for Codex/Claude</text><text class="cardSub" x="998" y="410">search, ingest, publish</text>
+  <rect class="surface" x="982" y="438" width="166" height="66" rx="10"/><text class="cardTitle" x="998" y="462">CLI</text><text class="cardSub" x="998" y="479">swcb command runner</text><text class="cardSub" x="998" y="496">scripts stay usable</text>
+  <rect class="surface" x="982" y="524" width="166" height="58" rx="10"/><text class="cardTitle" x="998" y="548">Prompt library</text><text class="cardSub" x="998" y="565">repeatable agent tasks</text>
 
-  <!-- 5. DECIDE: surfaces -> outputs -->
-  <path class="arrow" d="M1204,224 L1270,234"/><text class="label" x="1210" y="214">report</text>
-  <path class="arrow" d="M1204,465 L1270,452"/><text class="label" x="1210" y="430">publish scan</text>
+  <!-- Decide cards -->
+  <rect class="out" x="1212" y="266" width="226" height="52" rx="10"/><text class="cardTitle" x="1228" y="289">Assess now / monitor / reject</text><text class="cardSub" x="1228" y="306">final scan card in Workbench</text>
+  <rect class="out" x="1212" y="332" width="226" height="52" rx="10"/><text class="cardTitle" x="1228" y="355">Panel verdict</text><text class="cardSub" x="1228" y="372">evidence-grounded go/no-go</text>
+  <rect class="out" x="1212" y="398" width="226" height="52" rx="10"/><text class="cardTitle" x="1228" y="421">Vendor package</text><text class="cardSub" x="1228" y="438">subs, call script, email ask-list</text>
+  <rect class="out" x="1212" y="464" width="226" height="52" rx="10"/><text class="cardTitle" x="1228" y="487">Document evidence</text><text class="cardSub" x="1228" y="504">quotes backed by public files</text>
+  <rect class="out" x="1212" y="530" width="226" height="52" rx="10"/><text class="cardTitle" x="1228" y="553">Bid/no-bid next step</text><text class="cardSub" x="1228" y="570">task and pursuit state updated</text>
 
-  <!-- feedback: digest writes pursuits ; dashboard reads/writes the watchlist -->
-  <path class="arrow" d="M782,503 L716,500"/><text class="label" x="724" y="490">save pursuit</text>
-  <path class="readArrow" d="M1026,268 L993,292 L993,624 L636,624 L636,546"/>
-  <text class="rlabel" x="812" y="618" text-anchor="middle">dashboard reads / writes pursuits</text>
+  <!-- Bottom guidance strip -->
+  <rect class="guide shadow" x="40" y="674" width="1420" height="96" rx="16"/>
+  <text class="noteTitle" x="64" y="704">Rules that guide every stage</text>
+  <text class="noteText" x="64" y="728">PROFILE.md keeps the business fit focused: small-team field installation, DMV-first, total small business now, SDVOSB later.</text>
+  <text class="noteText" x="64" y="750">criteria/ holds fit, exclusion, panel, resale, and vendor-sourcing rules. tasks/ records setup work and next operating steps.</text>
 
-  <!-- guidance steers scoring and the AI clients -->
-  <path class="guideArrow" d="M560,746 C560,580 740,470 782,418"/><text class="glabel" x="556" y="690">rules steer scoring &amp; rejection</text>
-  <path class="guideArrow" d="M1150,746 L1150,500"/><text class="glabel" x="1160" y="640">read by Codex / Claude</text>
+  <rect class="guide" x="1010" y="700" width="116" height="30" rx="15"/><text class="pillText" x="1068" y="720" text-anchor="middle">PROFILE.md</text>
+  <rect class="guide" x="1140" y="700" width="116" height="30" rx="15"/><text class="pillText" x="1198" y="720" text-anchor="middle">criteria/</text>
+  <rect class="guide" x="1270" y="700" width="92" height="30" rx="15"/><text class="pillText" x="1316" y="720" text-anchor="middle">tasks/</text>
+  <rect class="guide" x="1010" y="740" width="160" height="30" rx="15"/><text class="pillText" x="1090" y="760" text-anchor="middle">adapters/skills/</text>
+  <rect class="guide" x="1184" y="740" width="116" height="30" rx="15"/><text class="pillText" x="1242" y="760" text-anchor="middle">prompts/</text>
 </svg>
