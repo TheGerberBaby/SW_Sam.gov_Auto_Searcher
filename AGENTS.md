@@ -46,6 +46,11 @@ cycles on a blocked workstream.
   results so the production Stormwind Workbench updates automatically. Publish
   an empty item list when no supported fit is found. Never publish intermediate
   keyword-search results or rejected false positives.
+- For chat-requested scans in Codex/Claude, the final answer is not complete
+  until it includes the Workbench scan ID returned by `publish_research_scan`.
+  If the MCP tool is unavailable, use the local fallback from the project root:
+  `python scripts/swcb.py publish-scan --summary "..." --item "{...}"`.
+  The fallback writes the same `ai_research` scan row consumed by the Workbench.
 - When asked to process Workbench card-created subcontractor research, use
   `list_vendor_sourcing_jobs`, `get_vendor_sourcing_job`, and
   `complete_vendor_sourcing_job` when available. Treat the generated package as

@@ -94,6 +94,17 @@ For contract-lead research, the client should call `publish_research_scan`
 exactly once after validation so the final curated results appear under Past
 Scans in the production Workbench.
 
+If a Codex/Claude chat does contract-lead research but cannot access the MCP
+publish tool, publish the final curated scan from the project root with the
+local fallback:
+
+```powershell
+python .\scripts\swcb.py publish-scan --summary "Final scan summary" --item "{\"notice_id\":\"...\",\"title\":\"...\",\"disposition\":\"assess now\"}"
+```
+
+The final answer for a chat-requested scan should include the Workbench scan ID
+from either `publish_research_scan` or `publish-scan`.
+
 Opportunity-card subcontractor research uses a durable queue. Call
 `list_vendor_sourcing_jobs`, then `get_vendor_sourcing_job`, complete the
 public-web and solicitation-document research, and call

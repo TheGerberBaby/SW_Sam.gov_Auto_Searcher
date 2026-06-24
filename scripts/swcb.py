@@ -11,6 +11,7 @@ Examples:
     python scripts/swcb.py score --profile elastic_only --min-score 4
     python scripts/swcb.py digest --days 3
     python scripts/swcb.py dashboard
+    python scripts/swcb.py publish-scan --summary "..." --item "{...}"
     python scripts/swcb.py watch list
     python scripts/swcb.py watch add NOTICE-ID --title "..."
 
@@ -37,6 +38,7 @@ COMMANDS = {
     "live":         ("find_contracts.py", "Live SAM.gov API lookup"),
     "score":        ("scoring.py",        "Score candidates against the technical-services rubric"),
     "digest":       ("digest.py",         "Generate a daily digest report"),
+    "publish-scan": ("research_scan_publish.py", "Publish final chat-research scan results to Workbench"),
     "watch":        ("watchlist.py",      "Manage the opportunity watchlist + saved searches"),
     "tasks":        ("tasks_lib.py",      "Manage the business-task spine (tasks/ directory)"),
     "incumbents":   ("usaspending.py",    "USAspending — incumbent / award-history analysis"),

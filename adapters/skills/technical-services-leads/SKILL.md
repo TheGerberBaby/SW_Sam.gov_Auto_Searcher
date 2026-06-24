@@ -28,7 +28,8 @@ the operator's canonical fit and exclusion rules are in:
 6. Call `publish_research_scan` exactly once with the final curated `assess now`
    and `monitor/partner` results. Publish an empty item list when no supported
    fit is found. Do not publish intermediate discovery results or rejected
-   false positives.
+   false positives. A chat scan is not complete until the final response
+   includes the Workbench scan ID returned by the publish call.
 
 Direct-script fallback from the project root:
 
@@ -60,3 +61,13 @@ disposition: `assess now`, `monitor/partner`, or `reject`.
 The final curated result set must also be written to the production Stormwind
 Workbench with `publish_research_scan` so the operator can open it from Past
 Scans without rerunning the search.
+
+If the MCP publish tool is unavailable, publish the same final set through the
+local fallback from the project root:
+
+```powershell
+python .\scripts\swcb.py publish-scan --summary "Final scan summary" --item "{\"notice_id\":\"...\",\"title\":\"...\",\"disposition\":\"assess now\"}"
+```
+
+Use repeated `--item` flags or `--input path\to\scan.json` for multi-item
+scans. The fallback writes an `ai_research` scan into the same Workbench table.
