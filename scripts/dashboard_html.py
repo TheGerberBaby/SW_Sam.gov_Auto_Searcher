@@ -195,12 +195,32 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
 }
 .select-row input{width:18px;height:18px;min-height:18px;accent-color:var(--green)}
 .select-row span{font-size:13px;font-weight:800;color:var(--soft)}
-.folder{border:1px solid var(--line);border-radius:8px;background:var(--panel-2);margin:10px 0}
-.folder summary{cursor:pointer;padding:11px 12px;font-weight:850;color:var(--soft);list-style:none}
-.folder summary::-webkit-details-marker{display:none}
-.folder summary::before{content:"+";display:inline-block;width:18px;color:var(--green);font-weight:900}
-.folder[open] summary::before{content:"-"}
-.folder-body{padding:0 12px 12px;display:flex;flex-direction:column;gap:9px}
+.scan-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:4px 0 10px}
+.scan-tools .fineprint{margin-right:auto}
+.scan-log{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.scan-row{
+  width:100%;
+  min-height:0;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel-2);
+  color:var(--text);
+  padding:10px;
+  display:grid;
+  grid-template-columns:92px minmax(112px,.55fr) minmax(0,1.4fr) auto;
+  gap:10px;
+  align-items:start;
+  text-align:left;
+  cursor:pointer;
+}
+.scan-row:hover{border-color:var(--blue);text-decoration:none}
+.scan-row.active{border-color:var(--green);box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 20%,transparent)}
+.scan-id{font-size:12px;font-weight:850;color:var(--soft)}
+.scan-date{font-size:13px;font-weight:850;color:var(--text);line-height:1.25}
+.scan-meta{font-size:12px;color:var(--muted);line-height:1.35;margin-top:2px}
+.scan-summary{font-size:13px;color:var(--soft);line-height:1.35;overflow-wrap:anywhere}
+.scan-counts{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.scan-counts .tag{white-space:nowrap}
 .empty{border:1px dashed var(--line);border-radius:8px;padding:22px 12px;text-align:center;color:var(--muted)}
 .summary{min-height:20px;color:var(--muted);font-size:13px;margin:8px 0}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -232,6 +252,8 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
   .contextbar{align-items:flex-start;flex-direction:column}
   .grid,.split{grid-template-columns:1fr}
   .buttonbar button{flex:1 1 auto}
+  .scan-row{grid-template-columns:1fr}
+  .scan-counts{justify-content:flex-start}
 }
 </style>
 </head>
@@ -277,10 +299,11 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
       <div class="section-head">
         <h2>Scans</h2>
       </div>
-      <details class="folder" open>
-        <summary>Past scans <span id="scanFolderCount" class="fineprint"></span></summary>
-        <div class="folder-body" id="pastScans"><div class="empty">Loading scans...</div></div>
-      </details>
+      <div class="scan-tools">
+        <span id="scanFolderCount" class="fineprint">Loading scans...</span>
+        <button class="small" type="button" onclick="toggleScanOrder()" id="scanOrderButton">Oldest first</button>
+      </div>
+      <div class="scan-log" id="pastScans"><div class="empty">Loading scans...</div></div>
       <div class="summary" id="searchSummary">Open a past scan or run a new scan.</div>
       <div class="results" id="searchResults"></div>
     </section>
@@ -327,7 +350,15 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
 <div class="toast" id="toast"></div>
 <script>
 const PROJECT_ROOT = __PROJECT_ROOT_JSON__;
-const STATE = {profiles:["technical_services"], statuses:[], currentSearch:[], selectedNoticeId:null};
+const STATE = {
+  profiles:["technical_services"],
+  statuses:[],
+  currentSearch:[],
+  selectedNoticeId:null,
+  scans:[],
+  scanOrder:"asc",
+  activeScanId:null
+};
 const PROFILE_LABELS = {
   technical_services:"technical services",
   elastic_only:"Elastic legacy"
@@ -414,8 +445,8 @@ function selectRow(o){
   </label>`;
 }
 function leadCard(o){
-  const reasons = (o.reasons || []).slice(0,4).map(r => tag(`${r.weight > 0 ? "+" : ""}${r.weight} ${r.label}`, r.weight < 0 ? "red" : "green")).join("");
-  const lanes = (o.lanes || []).slice(0,4).map(l => tag(l, "blue")).join("");
+  const reasons = (o.reasons || []).filter(r => r && r.label).slice(0,4).map(r => tag(`${r.weight > 0 ? "+" : ""}${r.weight} ${r.label}`, r.weight < 0 ? "red" : "green")).join("");
+  const lanes = (o.lanes || []).filter(Boolean).slice(0,4).map(l => tag(l, "blue")).join("");
   return `<article class="card${selectedClass(o)}">
     <div>${tag(o.band || "unscored", scoreColor(o.band))}${o.score != null ? tag(`score ${o.score}`) : ""}${o.naics_code ? tag(o.naics_code) : ""}</div>
     <div class="card-title">${esc(o.title || "-")}</div>
@@ -457,17 +488,58 @@ function taskCard(t){
     <div class="meta">${(t.dependencies || []).length ? `Depends on ${esc(t.dependencies.join(", "))}` : "No blockers listed."}</div>
   </article>`;
 }
-function digestCard(d){
-  return `<article class="card">
-    <div>${tag(`${d.candidates_shown || 0} leads`, "blue")}${tag(d.source || "digest")}</div>
-    <div class="card-title">${esc(profileLabel(d.profile))}</div>
-    <div class="meta">${esc(shortDate(d.run_at))}</div>
-    <div class="meta">${esc(d.summary || `${d.candidates_shown || 0} of ${d.candidates_scanned || 0} notices`)}</div>
-    <div class="card-actions">
-      <button class="small" onclick="openDigest(${Number(d.id)})">Show leads</button>
-      ${d.report_path ? `<a class="btn small" target="_blank" href="/api/digest/report?id=${Number(d.id)}">Report</a>` : ""}
+function scanTime(d){
+  const date = new Date(d.run_at || "");
+  return Number.isFinite(date.getTime()) ? date.getTime() : 0;
+}
+function scanDateParts(value){
+  if (!value) return {date:"-", time:""};
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return {date:String(value).slice(0,10), time:String(value).slice(11,16)};
+  return {
+    date:date.toLocaleDateString([], {month:"short", day:"numeric", year:"numeric"}),
+    time:date.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"})
+  };
+}
+function scanSummaryText(d){
+  return d.summary || `${d.candidates_shown || 0} of ${d.candidates_scanned || 0} notices`;
+}
+function digestRow(d){
+  const id = Number(d.id);
+  const stamp = scanDateParts(d.run_at);
+  const active = STATE.activeScanId === id ? " active" : "";
+  return `<article class="scan-row${active}" onclick="openDigest(${id})" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDigest(${id})}">
+    <div>
+      <div class="scan-id">scan ${id}</div>
+      <div class="scan-meta">${esc(d.source || "digest")}</div>
+    </div>
+    <div>
+      <div class="scan-date">${esc(stamp.date)}</div>
+      <div class="scan-meta">${esc(stamp.time)}</div>
+    </div>
+    <div>
+      <div class="scan-summary">${esc(scanSummaryText(d))}</div>
+      <div class="scan-meta">${esc(profileLabel(d.profile))}</div>
+    </div>
+    <div class="scan-counts">
+      ${tag(`${d.candidates_shown || 0} leads`, "blue")}
+      ${tag(`${d.candidates_scanned || 0} scanned`)}
+      ${d.report_path ? `<a class="btn small" target="_blank" href="/api/digest/report?id=${id}" onclick="event.stopPropagation()">Report</a>` : ""}
     </div>
   </article>`;
+}
+function renderScanHistory(){
+  const ordered = [...STATE.scans].sort((a,b) => (
+    STATE.scanOrder === "asc" ? scanTime(a) - scanTime(b) : scanTime(b) - scanTime(a)
+  ));
+  const countLabel = `${ordered.length} scan${ordered.length === 1 ? "" : "s"} · ${STATE.scanOrder === "asc" ? "oldest first" : "newest first"}`;
+  document.getElementById("scanFolderCount").textContent = countLabel;
+  document.getElementById("scanOrderButton").textContent = STATE.scanOrder === "asc" ? "Newest first" : "Oldest first";
+  document.getElementById("pastScans").innerHTML = ordered.length ? ordered.map(digestRow).join("") : `<div class="empty">No scans yet.</div>`;
+}
+function toggleScanOrder(){
+  STATE.scanOrder = STATE.scanOrder === "asc" ? "desc" : "asc";
+  renderScanHistory();
 }
 
 function setCurrentContext(payload){
@@ -551,8 +623,8 @@ async function loadTasks(){
 }
 async function loadDigests(){
   const data = await api("/api/digests");
-  document.getElementById("scanFolderCount").textContent = data.length ? `(${data.length})` : "";
-  document.getElementById("pastScans").innerHTML = data.length ? data.map(digestCard).join("") : `<div class="empty">No scans yet.</div>`;
+  STATE.scans = data || [];
+  renderScanHistory();
   if (!STATE.currentSearch.length) {
     document.getElementById("searchSummary").textContent = "Open a past scan or run a new scan.";
     document.getElementById("searchResults").innerHTML = "";
@@ -564,7 +636,11 @@ async function openDigest(id){
   document.getElementById("searchSummary").innerHTML = `<span class="spinner"></span>loading scan`;
   const data = await api(`/api/digest/items?id=${encodeURIComponent(id)}`);
   STATE.currentSearch = data.items || [];
-  document.getElementById("searchSummary").textContent = `${STATE.currentSearch.length} leads from scan ${id}`;
+  STATE.activeScanId = Number(id);
+  renderScanHistory();
+  const run = STATE.scans.find(item => Number(item.id) === Number(id));
+  const label = run ? `${scanDateParts(run.run_at).date} · ${scanSummaryText(run)}` : `scan ${id}`;
+  document.getElementById("searchSummary").textContent = `${STATE.currentSearch.length} lead${STATE.currentSearch.length === 1 ? "" : "s"} from scan ${id} · ${label}`;
   target.innerHTML = STATE.currentSearch.length ? STATE.currentSearch.map(leadCard).join("") : `<div class="empty">This scan has no stored leads.</div>`;
   window.scrollTo({top:0,behavior:"smooth"});
 }
