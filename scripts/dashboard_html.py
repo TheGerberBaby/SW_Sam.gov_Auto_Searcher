@@ -175,6 +175,8 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
   min-width:0;
 }
 .card.selected{border-color:var(--green);box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 22%,transparent)}
+.card.reviewing{border-color:var(--blue);box-shadow:0 0 0 2px color-mix(in srgb,var(--blue) 20%,transparent)}
+.card[tabindex="0"]{cursor:pointer}
 .card-title{font-weight:850;line-height:1.3;margin:7px 0 6px;overflow-wrap:anywhere}
 .meta{color:var(--muted);font-size:13px;line-height:1.45;overflow-wrap:anywhere}
 .meta strong{color:var(--soft)}
@@ -234,6 +236,29 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
 .scan-summary{font-size:13px;color:var(--soft);line-height:1.35;overflow-wrap:anywhere}
 .scan-counts{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 .scan-counts .tag{white-space:nowrap}
+.detail-pane[hidden],.default-pane[hidden]{display:none}
+.detail-kicker{font-size:12px;color:var(--muted);font-weight:850;text-transform:uppercase;line-height:1.35;margin-bottom:4px}
+.detail-title{font-size:17px;font-weight:900;line-height:1.25;margin-bottom:6px;overflow-wrap:anywhere}
+.detail-tags{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 10px}
+.detail-list{display:flex;flex-direction:column;gap:7px;margin:8px 0 12px}
+.detail-row{
+  display:grid;
+  grid-template-columns:96px minmax(0,1fr);
+  gap:8px;
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel-2);
+}
+.detail-label{font-size:12px;color:var(--muted);font-weight:850;text-transform:uppercase;line-height:1.35}
+.detail-value{font-size:13px;color:var(--soft);line-height:1.4;overflow-wrap:anywhere}
+.detail-value.muted{color:var(--muted)}
+.detail-section{margin-top:12px}
+.detail-section h3{font-size:13px;margin:0 0 7px;color:var(--soft);text-transform:uppercase}
+.detail-note{font-size:13px;color:var(--soft);line-height:1.45;overflow-wrap:anywhere}
+.detail-note.muted{color:var(--muted)}
+.detail-bullets{margin:0;padding-left:18px;color:var(--soft);font-size:13px;line-height:1.45}
+.detail-bullets li{margin:0 0 6px}
 .empty{border:1px dashed var(--line);border-radius:8px;padding:22px 12px;text-align:center;color:var(--muted)}
 .summary{min-height:20px;color:var(--muted);font-size:13px;margin:8px 0}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -333,15 +358,24 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
       </div>
     </section>
 
-    <section class="section" id="pursuitsPanel">
-      <div class="section-head">
-        <h2>Pursuits</h2>
-        <div class="section-actions">
-          <select id="w-status" onchange="loadWatchlist()" style="width:auto;min-height:30px"></select>
+    <section class="section side-panel" id="pursuitsPanel">
+      <div class="default-pane" id="pursuitsPane">
+        <div class="section-head">
+          <h2>Pursuits</h2>
+          <div class="section-actions">
+            <select id="w-status" onchange="loadWatchlist()" style="width:auto;min-height:30px"></select>
+          </div>
         </div>
+        <div class="summary" id="watchSummary"></div>
+        <div class="stack" id="watchlist"></div>
       </div>
-      <div class="summary" id="watchSummary"></div>
-      <div class="stack" id="watchlist"></div>
+      <div class="detail-pane" id="opportunityDetailPane" hidden>
+        <div class="section-head">
+          <h2>Opportunity details</h2>
+          <div class="section-actions"><button class="small" type="button" onclick="clearOpportunityDetail()">Back</button></div>
+        </div>
+        <div id="opportunityDetail"><div class="empty">Click an opportunity to review the important dates, blockers, and next checks.</div></div>
+      </div>
     </section>
 
     <section class="section rightcol">
@@ -380,6 +414,8 @@ const STATE = {
   statuses:[],
   currentSearch:[],
   selectedNoticeId:null,
+  reviewNoticeId:null,
+  reviewOpportunity:null,
   scans:[],
   scanOrder:"asc",
   activeScanId:null
@@ -462,43 +498,190 @@ function opportunityArg(o){
 function selectedClass(o){
   return STATE.selectedNoticeId && String(o.notice_id || "") === String(STATE.selectedNoticeId) ? " selected" : "";
 }
+function reviewClass(o){
+  return STATE.reviewNoticeId && String(o.notice_id || "") === String(STATE.reviewNoticeId) ? " reviewing" : "";
+}
+function opportunityCardClass(o){
+  return `card${selectedClass(o)}${reviewClass(o)}`;
+}
 function selectRow(o){
   const checked = STATE.selectedNoticeId && String(o.notice_id || "") === String(STATE.selectedNoticeId) ? "checked" : "";
-  return `<label class="select-row">
-    <input type="checkbox" ${checked} onchange='selectForChat(${opportunityArg(o)})'>
+  return `<label class="select-row" onclick="event.stopPropagation()">
+    <input type="checkbox" ${checked} onchange='event.stopPropagation();selectForChat(${opportunityArg(o)})'>
     <span>Use in chat</span>
   </label>`;
+}
+function flattenText(value){
+  if (Array.isArray(value)) return value.flatMap(flattenText);
+  if (value && typeof value === "object") return Object.values(value).flatMap(flattenText);
+  const text = String(value == null ? "" : value).trim();
+  return text ? [text] : [];
+}
+function detailFragments(o){
+  return [
+    o.supported_fit,
+    o.concern,
+    o.blockers,
+    o.evidence,
+    o.delivery_read && o.delivery_read.detail,
+    o.description
+  ].flatMap(flattenText).filter(Boolean);
+}
+function compactNote(text, max=340){
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}...` : clean;
+}
+function findDetailNote(o, required){
+  const fragments = detailFragments(o);
+  return compactNote(fragments.find(text => required.every(pattern => pattern.test(text))) || "");
+}
+function firstDetailNote(o, requiredSets){
+  for (const required of requiredSets) {
+    const note = findDetailNote(o, required);
+    if (note) return note;
+  }
+  return "";
+}
+function listItems(value, limit=6){
+  return flattenText(value).slice(0, limit);
+}
+function detailRow(label, value, muted=false){
+  const text = value || "Not found in stored scan notes.";
+  return `<div class="detail-row">
+    <div class="detail-label">${esc(label)}</div>
+    <div class="detail-value${muted || !value ? " muted" : ""}">${esc(text)}</div>
+  </div>`;
+}
+function detailBullets(items, emptyText){
+  const clean = (items || []).filter(Boolean);
+  if (!clean.length) return `<div class="detail-note muted">${esc(emptyText)}</div>`;
+  return `<ul class="detail-bullets">${clean.map(item => `<li>${esc(compactNote(item, 420))}</li>`).join("")}</ul>`;
+}
+function opportunityDetailHtml(o){
+  const siteVisit = firstDetailNote(o, [
+    [/site\s*visit|walkthrough|walk-through|bid\s*walk|pre-?bid/i],
+  ]);
+  const questions = firstDetailNote(o, [
+    [/questions?|q&a|clarification/i, /due|deadline|no later|submitted|receive|by\s+\w+/i],
+    [/questions?|q&a|clarification/i],
+  ]);
+  const submission = firstDetailNote(o, [
+    [/email|portal|submit|submission|quote documents|quotes must|proposal|PIEE/i],
+  ]);
+  const disposition = o.delivery_read && o.delivery_read.label ? o.delivery_read.label : (o.disposition || "");
+  const blockers = listItems(o.blockers, 6);
+  const evidence = listItems(o.evidence, 6);
+  const fitText = o.supported_fit || (o.delivery_read && o.delivery_read.detail) || "";
+  return `<div>
+    <div class="detail-kicker">${esc(o.notice_id || "opportunity")}</div>
+    <div class="detail-title">${esc(o.title || "-")}</div>
+    <div class="detail-tags">
+      ${disposition ? tag(disposition, disposition.toLowerCase().includes("assess") ? "green" : "gold") : ""}
+      ${o.band ? tag(o.band, scoreColor(o.band)) : ""}
+      ${o.score != null ? tag(`score ${o.score}`) : ""}
+      ${o.naics_code ? tag(o.naics_code) : ""}
+    </div>
+    <div class="buttonbar">
+      <button class="small primary" type="button" onclick='selectForChat(${opportunityArg(o)})'>Use in chat</button>
+      <button class="small" type="button" onclick='addToWatchlist(${opportunityArg(o)})'>Track</button>
+      <button class="small" type="button" onclick='sourceSubsForOpportunity(${opportunityArg(o)})'>Source subs</button>
+      ${o.link ? `<a class="btn small" target="_blank" href="${esc(o.link)}">Notice</a>` : ""}
+    </div>
+    <div class="detail-section">
+      <h3>Critical dates</h3>
+      <div class="detail-list">
+        ${detailRow("Response due", shortDate(o.response_deadline))}
+        ${detailRow("Posted", shortDate(o.posted_date))}
+        ${detailRow("Site visit", siteVisit)}
+        ${detailRow("Questions", questions)}
+        ${detailRow("Submit via", submission)}
+      </div>
+    </div>
+    <div class="detail-section">
+      <h3>Notice facts</h3>
+      <div class="detail-list">
+        ${detailRow("Solicitation", o.sol_number || "-")}
+        ${detailRow("Agency", o.department || o.sub_tier || "-")}
+        ${detailRow("Set-aside", o.set_aside || "-")}
+        ${detailRow("Place", workLocation(o) || "-")}
+        ${detailRow("Deadline", o.deadline_note || "-")}
+      </div>
+    </div>
+    <div class="detail-section">
+      <h3>Fit read</h3>
+      <div class="detail-note${fitText ? "" : " muted"}">${esc(fitText || "No supported-fit note stored for this scan item.")}</div>
+      ${o.concern ? `<div class="detail-note" style="margin-top:8px"><strong>Concern:</strong> ${esc(o.concern)}</div>` : ""}
+    </div>
+    <div class="detail-section">
+      <h3>Blockers / next checks</h3>
+      ${detailBullets(blockers, o.concern || "No explicit blocker list stored. Verify dates, site visit, licensing, insurance, and submission instructions in the solicitation package.")}
+    </div>
+    <div class="detail-section">
+      <h3>Evidence</h3>
+      ${detailBullets(evidence, "No document evidence stored for this item yet.")}
+    </div>
+  </div>`;
+}
+function renderOpportunityDetail(){
+  const defaultPane = document.getElementById("pursuitsPane");
+  const detailPane = document.getElementById("opportunityDetailPane");
+  const detail = document.getElementById("opportunityDetail");
+  if (!STATE.reviewOpportunity) {
+    defaultPane.hidden = false;
+    detailPane.hidden = true;
+    return;
+  }
+  defaultPane.hidden = true;
+  detailPane.hidden = false;
+  detail.innerHTML = opportunityDetailHtml(STATE.reviewOpportunity);
+}
+function showOpportunityDetail(o){
+  STATE.reviewOpportunity = o;
+  STATE.reviewNoticeId = o && o.notice_id ? String(o.notice_id) : null;
+  renderOpportunityDetail();
+  redrawVisibleCards();
+  if (window.matchMedia("(max-width: 1100px)").matches) {
+    document.getElementById("pursuitsPanel").scrollIntoView({behavior:"smooth", block:"start"});
+  }
+}
+function clearOpportunityDetail(redraw=true){
+  STATE.reviewOpportunity = null;
+  STATE.reviewNoticeId = null;
+  renderOpportunityDetail();
+  if (redraw) redrawVisibleCards();
 }
 function leadCard(o){
   const reasons = (o.reasons || []).filter(r => r && r.label).slice(0,4).map(r => tag(`${r.weight > 0 ? "+" : ""}${r.weight} ${r.label}`, r.weight < 0 ? "red" : "green")).join("");
   const lanes = (o.lanes || []).filter(Boolean).slice(0,4).map(l => tag(l, "blue")).join("");
-  return `<article class="card${selectedClass(o)}">
+  const arg = opportunityArg(o);
+  return `<article class="${opportunityCardClass(o)}" tabindex="0" onclick='showOpportunityDetail(${arg})' onkeydown='if(event.key==="Enter"||event.key===" "){event.preventDefault();showOpportunityDetail(${arg})}'>
     <div>${tag(o.band || "unscored", scoreColor(o.band))}${o.score != null ? tag(`score ${o.score}`) : ""}${o.naics_code ? tag(o.naics_code) : ""}</div>
     <div class="card-title">${esc(o.title || "-")}</div>
     <div class="meta"><strong>Due:</strong> ${esc(shortDate(o.response_deadline))} <strong>Agency:</strong> ${esc(o.department || o.sub_tier || "-")}</div>
     <div class="meta"><strong>Place:</strong> ${esc(workLocation(o) || "-")} <strong>Set-aside:</strong> ${esc(o.set_aside || "-")}</div>
     <div class="tags">${lanes}${reasons}</div>
     ${selectRow(o)}
-    <div class="card-actions">
-      <button class="small primary" onclick='addToWatchlist(${opportunityArg(o)})'>Track</button>
-      <button class="small" onclick='sourceSubsForOpportunity(${opportunityArg(o)})'>Source subs</button>
+    <div class="card-actions" onclick="event.stopPropagation()">
+      <button class="small primary" onclick='addToWatchlist(${arg})'>Track</button>
+      <button class="small" onclick='sourceSubsForOpportunity(${arg})'>Source subs</button>
       ${o.link ? `<a class="btn small" target="_blank" href="${esc(o.link)}">Notice</a>` : ""}
     </div>
   </article>`;
 }
 function watchCard(e){
   const status = e.status || "tracking";
-  return `<article class="card${selectedClass(e)}">
+  const arg = opportunityArg(e);
+  return `<article class="${opportunityCardClass(e)}" tabindex="0" onclick='showOpportunityDetail(${arg})' onkeydown='if(event.key==="Enter"||event.key===" "){event.preventDefault();showOpportunityDetail(${arg})}'>
     <div>${tag(STATUS_LABELS[status] || status, STATUS_COLORS[status] || "")}${e.band ? tag(e.band, scoreColor(e.band)) : ""}${e.score != null ? tag(`score ${e.score}`) : ""}</div>
     <div class="card-title">${esc(e.title || "-")}</div>
     <div class="meta"><strong>Due:</strong> ${esc(shortDate(e.response_deadline))} <strong>NAICS:</strong> ${esc(e.naics_code || "-")}</div>
-    <div class="meta"><strong>Notice:</strong> ${esc(e.notice_id || "-")} ${e.link ? `<a target="_blank" href="${esc(e.link)}">open</a>` : ""}</div>
+    <div class="meta"><strong>Notice:</strong> ${esc(e.notice_id || "-")} ${e.link ? `<a target="_blank" href="${esc(e.link)}" onclick="event.stopPropagation()">open</a>` : ""}</div>
     ${selectRow(e)}
-    <div class="card-actions">
+    <div class="card-actions" onclick="event.stopPropagation()">
       <select onchange='changeStatus("${esc(e.notice_id)}", this.value)' style="width:auto;min-height:30px">
         ${STATE.statuses.map(s => `<option value="${esc(s)}" ${s === status ? "selected" : ""}>${esc(STATUS_LABELS[s] || s)}</option>`).join("")}
       </select>
-      <button class="small" onclick='sourceSubsForOpportunity(${opportunityArg(e)})'>Source subs</button>
+      <button class="small" onclick='sourceSubsForOpportunity(${arg})'>Source subs</button>
       <button class="small" onclick='addNote("${esc(e.notice_id)}")'>Note</button>
       <button class="small danger" onclick='removeEntry("${esc(e.notice_id)}")'>Remove</button>
     </div>
@@ -662,6 +845,7 @@ async function openDigest(id){
   const data = await api(`/api/digest/items?id=${encodeURIComponent(id)}`);
   STATE.currentSearch = data.items || [];
   STATE.activeScanId = Number(id);
+  clearOpportunityDetail(false);
   renderScanHistory();
   const run = STATE.scans.find(item => Number(item.id) === Number(id));
   const label = run ? `${scanDateParts(run.run_at).date} · ${scanSummaryText(run)}` : `scan ${id}`;
@@ -706,6 +890,7 @@ async function runDigest(){
       body:{profile:"technical_services", days:3, min_score:3, write:true}
     });
     STATE.currentSearch = data.items || [];
+    clearOpportunityDetail(false);
     summary.textContent = `Scan complete: ${data.shown} leads from ${data.scanned} notices`;
     document.getElementById("searchResults").innerHTML = STATE.currentSearch.length ? STATE.currentSearch.map(leadCard).join("") : `<div class="empty">No strong leads in this scan.</div>`;
     await loadDigests();
