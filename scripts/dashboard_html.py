@@ -156,6 +156,17 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
 .stat b{display:block;font-size:24px;line-height:1}
 .stat span{display:block;margin-top:5px;color:var(--muted);font-size:12px;font-weight:700}
 .results,.stack{display:flex;flex-direction:column;gap:9px}
+.scan-review{grid-column:1 / span 2}
+.scan-review-grid{display:grid;grid-template-columns:minmax(300px,.8fr) minmax(360px,1.2fr);gap:12px;align-items:start}
+.scan-history-pane,.scan-results-pane{min-width:0}
+.scan-results-pane{
+  border-left:1px solid var(--line);
+  padding-left:12px;
+  position:sticky;
+  top:12px;
+  max-height:calc(100vh - 24px);
+  overflow:auto;
+}
 .card{
   border:1px solid var(--line);
   border-radius:8px;
@@ -213,6 +224,8 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
   text-align:left;
   cursor:pointer;
 }
+.scan-history-pane .scan-row{grid-template-columns:70px minmax(92px,.5fr) minmax(0,1fr)}
+.scan-history-pane .scan-counts{grid-column:1 / -1;justify-content:flex-start}
 .scan-row:hover{border-color:var(--blue);text-decoration:none}
 .scan-row.active{border-color:var(--green);box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 20%,transparent)}
 .scan-id{font-size:12px;font-weight:850;color:var(--soft)}
@@ -239,6 +252,7 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (max-width:1100px){
   .grid{grid-template-columns:1fr 1fr}
+  .scan-review{grid-column:1 / -1}
   .rightcol{grid-column:1 / -1}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -251,6 +265,8 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
   .statusline{display:none}
   .contextbar{align-items:flex-start;flex-direction:column}
   .grid,.split{grid-template-columns:1fr}
+  .scan-review-grid{grid-template-columns:1fr}
+  .scan-results-pane{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:12px;position:static;max-height:none;overflow:visible}
   .buttonbar button{flex:1 1 auto}
   .scan-row{grid-template-columns:1fr}
   .scan-counts{justify-content:flex-start}
@@ -295,17 +311,26 @@ label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12
   </section>
 
   <div class="grid">
-    <section class="section">
+    <section class="section scan-review">
       <div class="section-head">
         <h2>Scans</h2>
       </div>
-      <div class="scan-tools">
-        <span id="scanFolderCount" class="fineprint">Loading scans...</span>
-        <button class="small" type="button" onclick="toggleScanOrder()" id="scanOrderButton">Oldest first</button>
+      <div class="scan-review-grid">
+        <div class="scan-history-pane">
+          <div class="scan-tools">
+            <span id="scanFolderCount" class="fineprint">Loading scans...</span>
+            <button class="small" type="button" onclick="toggleScanOrder()" id="scanOrderButton">Oldest first</button>
+          </div>
+          <div class="scan-log" id="pastScans"><div class="empty">Loading scans...</div></div>
+        </div>
+        <div class="scan-results-pane">
+          <div class="section-head">
+            <h2>Opportunities</h2>
+          </div>
+          <div class="summary" id="searchSummary">Open a past scan or run a new scan.</div>
+          <div class="results" id="searchResults"></div>
+        </div>
       </div>
-      <div class="scan-log" id="pastScans"><div class="empty">Loading scans...</div></div>
-      <div class="summary" id="searchSummary">Open a past scan or run a new scan.</div>
-      <div class="results" id="searchResults"></div>
     </section>
 
     <section class="section" id="pursuitsPanel">
@@ -642,7 +667,9 @@ async function openDigest(id){
   const label = run ? `${scanDateParts(run.run_at).date} · ${scanSummaryText(run)}` : `scan ${id}`;
   document.getElementById("searchSummary").textContent = `${STATE.currentSearch.length} lead${STATE.currentSearch.length === 1 ? "" : "s"} from scan ${id} · ${label}`;
   target.innerHTML = STATE.currentSearch.length ? STATE.currentSearch.map(leadCard).join("") : `<div class="empty">This scan has no stored leads.</div>`;
-  window.scrollTo({top:0,behavior:"smooth"});
+  if (window.matchMedia("(max-width: 760px)").matches) {
+    document.querySelector(".scan-results-pane").scrollIntoView({behavior:"smooth", block:"start"});
+  }
 }
 async function addToWatchlist(o){
   await api("/api/watchlist", {
