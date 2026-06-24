@@ -10,6 +10,7 @@ Usage:
   python document_store.py status --json
   python document_store.py ingest "path\\to\\sow.pdf" --notice-id NOTICE --json
   python document_store.py ingest "https://example/document.pdf" --notice-id NOTICE
+  python document_store.py markdown "https://example/document.pdf" --output-dir data\\documents\\markdown
   python document_store.py search "bonding requirement" --notice-id NOTICE --json
   python document_store.py search "authorized reseller" --mode hybrid --json
 """
@@ -58,6 +59,7 @@ class Settings:
     embedding_provider: str
     embedding_model: str
     embedding_dimensions: int
+    pdf_extractor: str
     openai_api_key: str | None
     elasticsearch_api_key: str | None
     elasticsearch_username: str | None
@@ -75,6 +77,7 @@ class Settings:
             embedding_provider=os.getenv("EMBEDDING_PROVIDER", "none").strip().lower(),
             embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
             embedding_dimensions=int(os.getenv("EMBEDDING_DIMENSIONS", "1536")),
+            pdf_extractor=os.getenv("PDF_EXTRACTOR", "pymupdf4llm").strip().lower(),
             openai_api_key=os.getenv("OPENAI_API_KEY") or None,
             elasticsearch_api_key=os.getenv("ELASTICSEARCH_API_KEY") or None,
             elasticsearch_username=os.getenv("ELASTICSEARCH_USERNAME") or None,
@@ -288,6 +291,13 @@ def normalize_text(text: str) -> str:
     return text.strip()
 
 
+def normalize_markdown(text: str) -> str:
+    text = text.replace("\x00", " ")
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{4,}", "\n\n\n", text)
+    return text.strip()
+
+
 def chunk_text(text: str, max_chars: int, overlap: int) -> list[str]:
     text = normalize_text(text)
     if not text:
@@ -348,6 +358,70 @@ def _is_pdf(data: bytes, filename: str, content_type: str) -> bool:
     )
 
 
+def _safe_markdown_filename(filename: str) -> str:
+    stem = Path(filename).stem or "document"
+    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "-", stem).strip(".-")
+    return f"{safe_stem or 'document'}.md"
+
+
+def _pdf_to_markdown(data: bytes, filename: str) -> str:
+    try:
+        import pymupdf
+        import pymupdf4llm
+    except ImportError as exc:
+        raise DocumentStoreError(
+            "PDF-to-Markdown extraction requires pymupdf4llm. Run: pip install -r requirements.txt"
+        ) from exc
+
+    try:
+        document = pymupdf.open(stream=data, filetype="pdf")
+    except Exception as exc:
+        raise DocumentStoreError(f"Unable to open PDF {filename}: {exc}") from exc
+    try:
+        try:
+            markdown = pymupdf4llm.to_markdown(
+                document,
+                filename=filename,
+                force_text=True,
+                show_progress=False,
+                use_ocr=False,
+                write_images=False,
+            )
+        except Exception as exc:
+            raise DocumentStoreError(f"Unable to convert PDF {filename} to Markdown: {exc}") from exc
+    finally:
+        document.close()
+    return normalize_markdown(markdown)
+
+
+def _pypdf_to_markdown(data: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise DocumentStoreError("PDF extraction requires pypdf. Run: pip install -r requirements.txt") from exc
+    try:
+        reader = PdfReader(io.BytesIO(data))
+    except Exception as exc:
+        raise DocumentStoreError(f"Unable to open PDF with pypdf: {exc}") from exc
+    pages: list[str] = []
+    for page_number, page in enumerate(reader.pages, 1):
+        try:
+            text = normalize_text(page.extract_text() or "")
+        except Exception as exc:
+            raise DocumentStoreError(f"Unable to extract text from PDF page {page_number}: {exc}") from exc
+        if text:
+            pages.append(f"<!-- page: {page_number} -->\n\n{text}")
+    return normalize_markdown("\n\n".join(pages))
+
+
+def pdf_to_markdown(data: bytes, filename: str, extractor: str) -> str:
+    if extractor == "pymupdf4llm":
+        return _pdf_to_markdown(data, filename)
+    if extractor == "pypdf":
+        return _pypdf_to_markdown(data)
+    raise DocumentStoreError("PDF extractor must be 'pymupdf4llm' or 'pypdf'.")
+
+
 def load_source(source: str, settings: Settings) -> tuple[bytes, str, str]:
     parsed = urlparse(source)
     if parsed.scheme in ("http", "https"):
@@ -375,15 +449,16 @@ def load_source(source: str, settings: Settings) -> tuple[bytes, str, str]:
     return path.read_bytes(), path.name, guessed_type
 
 
-def extract_text(data: bytes, filename: str, content_type: str) -> str:
+def extract_text(
+    data: bytes,
+    filename: str,
+    content_type: str,
+    *,
+    pdf_extractor: str = "pymupdf4llm",
+) -> str:
     suffix = Path(filename).suffix.lower()
     if _is_pdf(data, filename, content_type):
-        try:
-            from pypdf import PdfReader
-        except ImportError as exc:
-            raise DocumentStoreError("PDF ingestion requires pypdf. Run: pip install -r requirements.txt") from exc
-        reader = PdfReader(io.BytesIO(data))
-        return normalize_text("\n\n".join(page.extract_text() or "" for page in reader.pages))
+        return pdf_to_markdown(data, filename, pdf_extractor)
     if suffix == ".docx" or "wordprocessingml" in content_type:
         try:
             from docx import Document
@@ -399,6 +474,21 @@ def extract_text(data: bytes, filename: str, content_type: str) -> str:
         parser.feed(decoded)
         return normalize_text(parser.text())
     return normalize_text(decoded)
+
+
+def extract_markdown(
+    data: bytes,
+    filename: str,
+    content_type: str,
+    *,
+    pdf_extractor: str = "pymupdf4llm",
+) -> str:
+    suffix = Path(filename).suffix.lower()
+    if _is_pdf(data, filename, content_type):
+        return pdf_to_markdown(data, filename, pdf_extractor)
+    if suffix == ".md":
+        return normalize_markdown(data.decode("utf-8", errors="replace"))
+    return extract_text(data, filename, content_type, pdf_extractor=pdf_extractor)
 
 
 def gather_sources(values: Iterable[str]) -> list[str]:
@@ -556,18 +646,25 @@ def command_status(store: ElasticDocumentStore, args: argparse.Namespace) -> Non
 
 def command_ingest(store: ElasticDocumentStore, args: argparse.Namespace) -> None:
     provider = embedding_enabled(store.settings, args.embedding_provider)
-    metadata = parse_metadata(args.metadata)
+    base_metadata = parse_metadata(args.metadata)
+    if getattr(args, "public", False):
+        base_metadata.setdefault("public", "true")
     indexed: list[dict[str, Any]] = []
     sources = gather_sources(args.sources)
     if not sources:
         raise DocumentStoreError("No supported documents found to ingest.")
     for source in sources:
         data, filename, content_type = load_source(source, store.settings)
-        text = extract_text(data, filename, content_type)
+        pdf_extractor = getattr(args, "pdf_extractor", None) or store.settings.pdf_extractor
+        text = extract_text(data, filename, content_type, pdf_extractor=pdf_extractor)
         if not text:
             raise DocumentStoreError(
                 f"No extractable text found in {filename}. Scanned PDFs require OCR before ingest."
             )
+        metadata = dict(base_metadata)
+        if _is_pdf(data, filename, content_type):
+            metadata.setdefault("ocr", "false")
+            metadata.setdefault("pdf_extractor", pdf_extractor)
         pieces = chunk_text(text, store.settings.chunk_chars, store.settings.chunk_overlap)
         explicit_id = args.document_id if len(sources) == 1 else None
         document_id = make_document_id(source, filename, data, explicit_id)
@@ -618,6 +715,49 @@ def command_ingest(store: ElasticDocumentStore, args: argparse.Namespace) -> Non
             )
 
 
+def command_markdown(store: ElasticDocumentStore, args: argparse.Namespace) -> None:
+    sources = gather_sources(args.sources)
+    if not sources:
+        raise DocumentStoreError("No supported documents found to convert.")
+    if args.output and len(sources) != 1:
+        raise DocumentStoreError("--output can only be used with a single source.")
+
+    converted: list[dict[str, Any]] = []
+    for source in sources:
+        data, filename, content_type = load_source(source, store.settings)
+        pdf_extractor = getattr(args, "pdf_extractor", None) or store.settings.pdf_extractor
+        markdown = extract_markdown(data, filename, content_type, pdf_extractor=pdf_extractor)
+        if not markdown:
+            raise DocumentStoreError(
+                f"No extractable text found in {filename}. Scanned PDFs require OCR before conversion."
+            )
+        output_path = (
+            Path(args.output).expanduser().resolve()
+            if args.output
+            else Path(args.output_dir).expanduser().resolve() / _safe_markdown_filename(filename)
+        )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(markdown + "\n", encoding="utf-8")
+        converted.append(
+            {
+                "source": source,
+                "filename": filename,
+                "content_type": content_type,
+                "output_path": str(output_path),
+                "characters": len(markdown),
+                "content_sha256": hashlib.sha256(data).hexdigest(),
+                "ocr": False,
+                "pdf_extractor": pdf_extractor if _is_pdf(data, filename, content_type) else None,
+            }
+        )
+
+    if args.json:
+        print(json.dumps({"converted": converted}, indent=2))
+        return
+    for item in converted:
+        print(f"Wrote {item['output_path']} ({item['characters']} characters, ocr=False)")
+
+
 def command_search(store: ElasticDocumentStore, args: argparse.Namespace) -> None:
     store.ensure_index()
     filters = build_filters(args)
@@ -658,8 +798,36 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--title", help="Opportunity or document title.")
     ingest.add_argument("--document-type", default="solicitation_attachment")
     ingest.add_argument("--metadata", action="append", default=[], help="Additional key=value metadata.")
+    ingest.add_argument(
+        "--public",
+        action="store_true",
+        help="Explicitly mark evidence as public and eligible for external panel evaluation.",
+    )
+    ingest.add_argument(
+        "--pdf-extractor",
+        choices=["pymupdf4llm", "pypdf"],
+        help="Non-OCR PDF extractor. Defaults to PDF_EXTRACTOR or pymupdf4llm.",
+    )
     ingest.add_argument("--embedding-provider", choices=["none", "openai"])
     ingest.add_argument("--json", action="store_true")
+
+    markdown = subparsers.add_parser(
+        "markdown",
+        help="Convert files, folders, or HTTP(S) URLs to Markdown without OCR.",
+    )
+    markdown.add_argument("sources", nargs="+", help="Files, folders, or document URLs.")
+    markdown.add_argument(
+        "--output-dir",
+        default=str(PROJECT_DIR / "data" / "documents" / "markdown"),
+        help="Directory for generated .md files when converting one or more sources.",
+    )
+    markdown.add_argument("--output", help="Exact output .md path; only valid with one source.")
+    markdown.add_argument(
+        "--pdf-extractor",
+        choices=["pymupdf4llm", "pypdf"],
+        help="Non-OCR PDF extractor. Defaults to PDF_EXTRACTOR or pymupdf4llm.",
+    )
+    markdown.add_argument("--json", action="store_true")
 
     search = subparsers.add_parser("search", help="Search previously indexed solicitation documents.")
     search.add_argument("query", help="Question or search phrase.")
@@ -683,6 +851,8 @@ def main() -> None:
             command_status(store, args)
         elif args.command == "ingest":
             command_ingest(store, args)
+        elif args.command == "markdown":
+            command_markdown(store, args)
         elif args.command == "search":
             command_search(store, args)
     except DocumentStoreError as exc:

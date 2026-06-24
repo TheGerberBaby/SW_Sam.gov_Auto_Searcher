@@ -88,6 +88,16 @@ python .\scripts\document_store.py ingest "https://public.example.gov/solicitati
   --notice-id "NOTICE-ID" `
   --solicitation-number "SOL-NUMBER" `
   --title "Solicitation attachment" `
+  --public `
+  --json
+```
+
+Convert a public attachment to Markdown without OCR before or after ingest:
+
+```powershell
+python .\scripts\document_store.py markdown "https://sam.gov/api/prod/opps/v3/opportunities/resources/files/RESOURCE-ID/download?&token=" `
+  --output-dir "data\document-cache\solicitation-md" `
+  --pdf-extractor pypdf `
   --json
 ```
 
@@ -115,6 +125,7 @@ The MCP server exposes:
 | `document_index_status` | Check Elasticsearch and index health. |
 | `ingest_public_document` | Ingest a public HTTPS solicitation document. |
 | `search_documents` | Retrieve source-backed document evidence. |
+| `publish_research_scan` | Publish one final curated AI scan into the production Workbench. |
 
 See [docs/MCP_SETUP.md](docs/MCP_SETUP.md) for Codex, Claude Code, and Claude Desktop registration.
 
@@ -124,9 +135,14 @@ See [docs/MCP_SETUP.md](docs/MCP_SETUP.md) for Codex, Claude Code, and Claude De
 2. Search each capability lane with `scripts/search_bulk.py` or the MCP `search_opportunities` tool.
 3. Reject closed, unrelated, construction, commodity, and weak keyword-only matches.
 4. Verify serious candidates against official public notice data.
-5. Ingest a public requirements document for the strongest candidate.
-6. Search indexed evidence for technical fit and bid blockers.
-7. Recommend `assess now`, `monitor/partner`, or `reject`.
+5. Read SAM attachment metadata and download public SOW/PWS/RFQ files.
+6. Convert public PDF/DOCX attachments to Markdown without OCR when inspection or debugging matters.
+7. Ingest the public requirements document into Elasticsearch.
+8. Search indexed evidence for scope, site visits, bonding, licensing, and bid blockers.
+9. Recommend `assess now`, `monitor/partner`, or `reject`.
+10. Publish the final curated `assess now` and `monitor/partner` results with
+   `publish_research_scan` so the production Workbench updates automatically.
+   Publish an empty result set when no supported fit is found.
 
 ## Tests
 

@@ -1,8 +1,11 @@
 import importlib.util
+import io
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -26,6 +29,7 @@ class DocumentStoreTests(unittest.TestCase):
             embedding_provider="none",
             embedding_model="test",
             embedding_dimensions=3,
+            pdf_extractor="pymupdf4llm",
             openai_api_key=None,
             elasticsearch_api_key=None,
             elasticsearch_username=None,
@@ -92,6 +96,115 @@ class DocumentStoreTests(unittest.TestCase):
                 b"%PDF-1.7 data", "download", "application/octet-stream"
             )
         )
+
+    def test_pdf_extraction_uses_markdown_without_ocr(self):
+        captured = {}
+
+        class FakeDocument:
+            def close(self):
+                captured["closed"] = True
+
+        def fake_open(**kwargs):
+            captured["open"] = kwargs
+            return FakeDocument()
+
+        def fake_to_markdown(document, **kwargs):
+            captured["to_markdown"] = kwargs
+            self.assertIsInstance(document, FakeDocument)
+            return "# Scope\n\nInstall card readers."
+
+        with patch.dict(
+            sys.modules,
+            {
+                "pymupdf": SimpleNamespace(open=fake_open),
+                "pymupdf4llm": SimpleNamespace(to_markdown=fake_to_markdown),
+            },
+        ):
+            text = document_store.extract_text(
+                b"%PDF-1.7 content", "scope.pdf", "application/pdf"
+            )
+
+        self.assertEqual(text, "# Scope\n\nInstall card readers.")
+        self.assertEqual(captured["open"], {"stream": b"%PDF-1.7 content", "filetype": "pdf"})
+        self.assertFalse(captured["to_markdown"]["use_ocr"])
+        self.assertFalse(captured["to_markdown"]["write_images"])
+        self.assertTrue(captured["closed"])
+
+    def test_markdown_command_writes_output_file(self):
+        store = SimpleNamespace(settings=self.settings())
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with (
+                patch.object(
+                    document_store,
+                    "load_source",
+                    return_value=(b"%PDF-1.7 content", "Access Control Scope.pdf", "application/pdf"),
+                ),
+                patch.object(document_store, "extract_markdown", return_value="# Access Control"),
+                redirect_stdout(io.StringIO()),
+            ):
+                document_store.command_markdown(
+                    store,
+                    SimpleNamespace(
+                        sources=["https://example.test/access-control.pdf"],
+                        output_dir=tmp_dir,
+                        output=None,
+                        json=True,
+                    ),
+                )
+            output_path = Path(tmp_dir) / "Access-Control-Scope.md"
+            self.assertEqual(output_path.read_text(encoding="utf-8"), "# Access Control\n")
+
+    def test_pypdf_extractor_outputs_markdown_with_page_markers(self):
+        class Page:
+            def __init__(self, text):
+                self.text = text
+
+            def extract_text(self):
+                return self.text
+
+        class Reader:
+            def __init__(self, stream):
+                self.pages = [Page("First page"), Page("Second page")]
+
+        with patch.dict(sys.modules, {"pypdf": SimpleNamespace(PdfReader=Reader)}):
+            text = document_store.pdf_to_markdown(
+                b"%PDF-1.7 content", "scope.pdf", "pypdf"
+            )
+
+        self.assertIn("<!-- page: 1 -->\n\nFirst page", text)
+        self.assertIn("<!-- page: 2 -->\n\nSecond page", text)
+
+    def test_public_ingest_marks_chunks_for_panel_transmission(self):
+        class Store:
+            settings = self.settings()
+
+            def __init__(self):
+                self.chunks = []
+
+            def replace_document_chunks(self, document_id, chunks):
+                self.chunks = chunks
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "public-sow.txt"
+            path.write_text("Public scope and clearance requirements.", encoding="utf-8")
+            store = Store()
+            with redirect_stdout(io.StringIO()):
+                document_store.command_ingest(
+                    store,
+                    SimpleNamespace(
+                        sources=[str(path)],
+                        document_id=None,
+                        notice_id="NOTICE",
+                        solicitation_number="SOL",
+                        title="Public SOW",
+                        document_type="solicitation_attachment",
+                        metadata=[],
+                        public=True,
+                        embedding_provider=None,
+                        json=True,
+                    ),
+                )
+        self.assertEqual(store.chunks[0]["metadata"]["public"], "true")
 
 
 if __name__ == "__main__":

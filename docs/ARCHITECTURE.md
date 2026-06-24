@@ -19,14 +19,20 @@ flowchart LR
     R --> S
 
     M --> I["ingest_public_document"]
-    G["Official public government<br/>SOW / PWS / requirements PDF"] --> I
-    I --> X["text extraction + chunking<br/>scripts/document_store.py"]
+    M --> A["SAM attachment metadata<br/>opps/v3 resources"]
+    A --> G["Official public attachments<br/>PDF / DOCX / XLSX / HTML"]
+    G --> I
+    G --> MD["document_store.py markdown<br/>non-OCR PDF/DOCX to .md"]
+    I --> X["document_store.py ingest<br/>download · normalize · chunk"]
+    MD --> CACHED[("local markdown cache<br/>data/document-cache/")]
     X --> E[("Elasticsearch<br/>stormwind_documents_v1")]
 
     M --> F["search_documents"]
     M --> H["document_index_status"]
+    M --> W["publish_research_scan"]
     F --> E
     H --> E
+    W --> WB[("Workbench / watchlist<br/>research scans")]
     K["Kibana optional dashboard"] --> E
 ```
 
@@ -34,19 +40,27 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A["Ask for opportunities"] --> B["Load technical-services profile"]
-    B --> C["Search local SAM mirror<br/>terms + NAICS discovery hints"]
+    A["Ask for opportunities"] --> B["Load profile + explicit lane override<br/>technical services / construction exception"]
+    B --> C["Search local SAM mirror<br/>keywords, NAICS, set-aside, open deadline"]
     C --> D{"Deadline still open?"}
     D -->|No| X["Reject as expired"]
-    D -->|Yes| E{"Plausible service fit?"}
-    E -->|No| Y["Reject unrelated / resale-only / overbroad"]
-    E -->|Yes| F["Verify current official notice"]
-    F --> G["Download one public SOW/PWS/requirements document"]
-    G --> H["Ingest document into Elasticsearch"]
-    H --> I["Retrieve requirements and blockers"]
-    I --> J{"Evidence supports capability fit?"}
-    J -->|No| Z["Monitor or reject with reason"]
-    J -->|Yes| K["Recommend assessment<br/>with eligibility and bid checks"]
+    D -->|Yes| E{"Plausible scope and crew size?"}
+    E -->|No| Y["Reject oversized, unrelated, sole-source, or passed site-visit"]
+    E -->|Yes| F["Verify current official notice<br/>SAM.gov page/API"]
+    F --> G["Read attachment metadata<br/>opps/v3 resources"]
+    G --> H{"Public attachment available?"}
+    H -->|No| I["Use notice text only<br/>flag document gap"]
+    H -->|Yes| J["Download SOW/PWS/RFQ<br/>public resource file URL"]
+    J --> K["Convert to Markdown without OCR<br/>document_store.py markdown"]
+    K --> L["Ingest into Elasticsearch<br/>document_store.py ingest"]
+    L --> M["Search indexed evidence<br/>scope, deadlines, bonding, site visit, licenses"]
+    I --> N{"Evidence supports pursuit?"}
+    M --> N
+    N -->|No| O["Reject or monitor with reason"]
+    N -->|Yes| P["Assess now / partner / monitor"]
+    O --> Q["publish_research_scan once"]
+    P --> Q
+    Q --> R["Workbench card updates"]
 ```
 
 ## Runtime Responsibilities
@@ -57,7 +71,9 @@ flowchart TD
 | Claude Desktop | Uses the same MCP tools without requiring Codex skills. |
 | Docker MCP server | Presents controlled research tools to either AI client. |
 | SQLite mirror | Fast discovery from SAM.gov bulk opportunity records. |
-| Elasticsearch | Searchable evidence store for public solicitation documents. |
+| SAM attachment API | Lists public solicitation attachment metadata and resource IDs for download. |
+| Markdown cache | Optional durable `.md` copy of public SOW/PWS/RFQ files for inspection and debugging. |
+| Elasticsearch | Searchable evidence store for chunked public solicitation documents. |
 | Profile/prompt files | Define the operator's technical capability lanes and research rules. |
 | **Scoring engine** (v2) | Deterministic, explainable lead scoring against the profile rubric. |
 | **Watchlist store** (v2) | Per-opportunity pursuit state, status history, saved searches, digest run log. |

@@ -36,6 +36,7 @@ python scripts\document_store.py ingest "C:\path\to\scope-of-work.pdf" `
   --notice-id "NOTICE-ID" `
   --solicitation-number "SOL-NUMBER" `
   --title "Elastic Platform Requirements" `
+  --public `
   --json
 ```
 
@@ -52,14 +53,49 @@ SAM.gov download endpoints that end in `/download` are supported: the indexer
 uses the response filename and PDF signature when the server returns a generic
 `application/octet-stream` content type.
 
+PDF ingestion uses a Markdown-first extractor (`pymupdf4llm`) with OCR disabled.
+This keeps public attachments searchable without routing normal text-layer PDFs
+through OCR. Image-only scanned PDFs still need a separate OCR pass; the tool
+will fail clearly when no extractable text is present.
+
+If a PDF's embedded text layer is cleaner through the older plain extractor,
+retry with `--pdf-extractor pypdf` or set `PDF_EXTRACTOR=pypdf` in `.env`.
+Both extractor modes avoid OCR; `pymupdf4llm` usually preserves more headings
+and tables, while `pypdf` can be better for exact text on some generated PDFs.
+
+Convert one public attachment or local PDF to a durable Markdown artifact:
+
+```powershell
+python scripts\document_store.py markdown "https://public.example.gov/scope.pdf" `
+  --output-dir "data\documents\markdown" `
+  --json
+```
+
+Retry with the plain text-layer extractor when the Markdown output looks
+garbled:
+
+```powershell
+python scripts\document_store.py markdown "https://public.example.gov/scope.pdf" `
+  --output-dir "data\documents\markdown" `
+  --pdf-extractor pypdf `
+  --json
+```
+
+Convert a local folder of downloaded attachments:
+
+```powershell
+python scripts\document_store.py markdown "C:\path\to\attachments" `
+  --output-dir "data\documents\markdown"
+```
+
 Folders are accepted and recursively index supported files: PDF, DOCX, TXT,
 Markdown, HTML, and CSV. A re-ingest of identical content is idempotent. Use a
 stable `--document-id` when a known document should be replaced by a corrected
 or amended copy.
 
 The indexer extracts text and stores overlapping chunks with source metadata.
-Image-only scanned PDFs must be OCR'd before ingest because they do not contain
-extractable text.
+For PDFs, the extracted text is Markdown-flavored so headings, lists, and many
+tables survive better than plain `pypdf` extraction.
 
 ## Search Evidence
 
@@ -131,12 +167,21 @@ Available MCP tools:
 | `document_index_status` | Confirm Elasticsearch/index health. |
 | `ingest_public_document` | Ingest a public HTTPS solicitation attachment. |
 | `search_documents` | Retrieve source-backed evidence from indexed documents. |
+| `publish_research_scan` | Publish one final curated AI scan into the production Workbench. |
+| `evaluate_opportunity` | Run and persist the independent Phase-1 expert panel. |
+| `get_panel_verdict` | Fetch the latest stored panel verdict for a notice. |
+| `list_vendor_sourcing_jobs` | List card-created subcontractor-sourcing jobs waiting for Codex. |
+| `get_vendor_sourcing_job` | Load one queued job with its opportunity context and research handoff. |
+| `complete_vendor_sourcing_job` | Save the sourced public-web/document report and close the queue item. |
 
 The server also publishes the `technical-contracts://profiles/service-fit`
 resource and a `find_technical_services_leads` prompt. SQLite results remain discovery
 data; agents must verify serious candidates with current official sources.
 Deadline filtering uses `USER_TIMEZONE`, defaulting to
 `America/New_York`, rather than the container's UTC clock.
+After a user-requested contract-lead search, agents publish one curated scan so
+the Workbench updates automatically. Intermediate discovery calls remain
+transient.
 
 ## Client Registration
 

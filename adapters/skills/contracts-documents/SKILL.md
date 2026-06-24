@@ -33,6 +33,16 @@ When a user asks to store, analyze, or remember a solicitation attachment:
 python .\scripts\document_store.py ingest "<file-or-https-url>" --notice-id "<notice-id>" --solicitation-number "<sol-number>" --title "<title>" --json
 ```
 
+To inspect or preserve a solicitation PDF before indexing it, convert it to
+Markdown without OCR:
+
+```powershell
+python .\scripts\document_store.py markdown "<file-or-https-url>" --output-dir "data\documents\markdown" --json
+```
+
+If the Markdown looks garbled but the PDF has a text layer, retry with
+`--pdf-extractor pypdf`. This still avoids OCR.
+
 Use only files supplied by the user or public procurement-document URLs relevant
 to the request. Do not ingest credentials, private correspondence, or controlled
 SAM attachments without explicit approval and proper access.
