@@ -531,9 +531,34 @@ function compactNote(text, max=340){
   const clean = String(text || "").replace(/\s+/g, " ").trim();
   return clean.length > max ? `${clean.slice(0, max - 1)}...` : clean;
 }
+function splitDetailCandidates(text, includePairs=false){
+  const clean = String(text || "")
+    .replace(/\r/g, "\n")
+    .replace(/[•·]/g, "\n")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!clean) return [];
+  const sentencePattern = /[^.!?]+[.!?]+|[^.!?]+$/g;
+  const sentences = clean.match(sentencePattern) || [clean];
+  if (!includePairs) return sentences.map(text => text.trim()).filter(Boolean);
+  const candidates = [];
+  for (let index = 0; index < sentences.length; index += 1) {
+    const current = sentences[index].trim();
+    if (!current) continue;
+    const next = sentences[index + 1] ? sentences[index + 1].trim() : "";
+    if (next && current.length < 180) {
+      candidates.push(`${current} ${next}`);
+    }
+  }
+  return candidates;
+}
 function findDetailNote(o, required){
   const fragments = detailFragments(o);
-  return compactNote(fragments.find(text => required.every(pattern => pattern.test(text))) || "");
+  const directCandidates = fragments.flatMap(text => splitDetailCandidates(text));
+  const direct = directCandidates.find(text => required.every(pattern => pattern.test(text)));
+  if (direct) return compactNote(direct);
+  const pairedCandidates = fragments.flatMap(text => splitDetailCandidates(text, true));
+  return compactNote(pairedCandidates.find(text => required.every(pattern => pattern.test(text))) || "");
 }
 function firstDetailNote(o, requiredSets){
   for (const required of requiredSets) {
@@ -566,7 +591,8 @@ function opportunityDetailHtml(o){
     [/questions?|q&a|clarification/i],
   ]);
   const submission = firstDetailNote(o, [
-    [/email|portal|submit|submission|quote documents|quotes must|proposal|PIEE/i],
+    [/email|portal|PIEE|SAM\.gov|sam\.gov|quote documents|quotes must|submission instructions/i],
+    [/submit|submission|quotation|quote/i, /email|portal|PIEE|SAM\.gov|sam\.gov|via|through|address|mailto|subject line/i],
   ]);
   const disposition = o.delivery_read && o.delivery_read.label ? o.delivery_read.label : (o.disposition || "");
   const blockers = listItems(o.blockers, 6);
