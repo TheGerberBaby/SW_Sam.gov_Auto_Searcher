@@ -913,11 +913,11 @@ async function runDigest(){
   try {
     const data = await api("/api/digest/run", {
       method:"POST",
-      body:{profile:"technical_services", days:3, min_score:3, write:true}
+      body:{profile:"technical_services", days:3, min_score:3, min_runway_days:25, write:true}
     });
     STATE.currentSearch = data.items || [];
     clearOpportunityDetail(false);
-    summary.textContent = `Scan complete: ${data.shown} leads from ${data.scanned} notices`;
+    summary.textContent = `Scan complete: ${data.shown} leads from ${data.scanned} notices · ${data.min_runway_days || 25}+ day runway`;
     document.getElementById("searchResults").innerHTML = STATE.currentSearch.length ? STATE.currentSearch.map(leadCard).join("") : `<div class="empty">No strong leads in this scan.</div>`;
     await loadDigests();
   } catch (error) {

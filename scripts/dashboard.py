@@ -504,11 +504,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     profile=payload.get("profile") or "technical_services",
                     days=int(payload.get("days") or 3),
                     min_score=int(payload.get("min_score") or 2),
+                    min_runway_days=int(payload.get("min_runway_days") or 25),
                     write=bool(payload.get("write", True)),
                     env=DASHBOARD_ENV,
                 )
                 self._send_json({
                     "env": result["env"],
+                    "min_runway_days": result["min_runway_days"],
                     "scanned": result["scanned"],
                     "shown": result["shown"],
                     "summary": result["summary"],
@@ -708,10 +710,10 @@ def _handle_ask(text: str) -> dict[str, Any]:
 
     # — Digest —
     if head == "digest":
-        result = generate_digest(profile="technical_services", days=3, min_score=3, write=True)
+        result = generate_digest(profile="technical_services", days=3, min_score=3, min_runway_days=25, write=True)
         return {
             "kind": "digest/run",
-            "summary": f"Digest: {result['shown']} of {result['scanned']} scored ≥ 3",
+            "summary": f"Digest: {result['shown']} of {result['scanned']} scored ≥ 3 with 25+ day runway",
             "results": result,
         }
 

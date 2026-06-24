@@ -33,6 +33,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from scoring import (  # noqa: E402
     LOCAL_TZ,
     ScoreResult,
+    _parse_deadline,
     available_profiles,
     bulk_score,
 )
@@ -51,6 +52,7 @@ def reports_dir_for_env(env: str | None = None) -> Path:
 
 
 REPORTS_DIR = reports_dir_for_env("prod")
+DEFAULT_MIN_RUNWAY_DAYS = 25
 
 LANE_LABELS = {
     "electronic_security": "Electronic Security / Cameras / Access Control",
@@ -81,6 +83,18 @@ def _query_recent(days: int, limit: int) -> list[dict[str, Any]]:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(sql, (cutoff, limit)).fetchall()
     return [dict(row) for row in rows]
+
+
+def _filter_min_runway(rows: list[dict[str, Any]], min_runway_days: int) -> list[dict[str, Any]]:
+    if min_runway_days <= 0:
+        return rows
+    minimum_deadline = datetime.now(LOCAL_TZ).date() + timedelta(days=min_runway_days)
+    filtered: list[dict[str, Any]] = []
+    for row in rows:
+        deadline = _parse_deadline(row.get("response_deadline"))
+        if deadline and deadline >= minimum_deadline:
+            filtered.append(row)
+    return filtered
 
 
 def _opportunity_lookup(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -193,6 +207,7 @@ def render_markdown(
     profile: str,
     days: int,
     min_score: int,
+    min_runway_days: int,
     scored: list[ScoreResult],
     opportunities: dict[str, dict[str, Any]],
     generated_at: datetime,
@@ -200,7 +215,11 @@ def render_markdown(
     lines: list[str] = []
     lines.append(f"# SAM.gov Daily Digest — {generated_at.date().isoformat()}")
     lines.append("")
-    lines.append(f"Profile: **{profile}** · Window: last **{days}** days · Min score: **{min_score}** · Generated: {generated_at.isoformat(timespec='seconds')}")
+    lines.append(
+        f"Profile: **{profile}** · Window: last **{days}** days · "
+        f"Min score: **{min_score}** · Min runway: **{min_runway_days} days** · "
+        f"Generated: {generated_at.isoformat(timespec='seconds')}"
+    )
     lines.append("")
     lines.append(f"Scored opportunities surfaced: **{len(scored)}**")
     lines.append("")
@@ -244,6 +263,7 @@ def render_html(
     profile: str,
     days: int,
     min_score: int,
+    min_runway_days: int,
     scored: list[ScoreResult],
     opportunities: dict[str, dict[str, Any]],
     generated_at: datetime,
@@ -282,6 +302,7 @@ def render_html(
         "</head><body>",
         f"<h1>SAM.gov Daily Digest — {generated_at.date().isoformat()}</h1>",
         f"<div class='meta'>Profile: <b>{html.escape(profile)}</b> · Window: last <b>{days}</b> days · Min score: <b>{min_score}</b> · "
+        f"Min runway: <b>{min_runway_days} days</b> · "
         f"Generated: {generated_at.isoformat(timespec='seconds')}<br>"
         f"Scored opportunities surfaced: <b>{len(scored)}</b></div>",
     ]
@@ -325,6 +346,7 @@ def generate_digest(
     profile: str = "technical_services",
     days: int = 3,
     min_score: int = 2,
+    min_runway_days: int = DEFAULT_MIN_RUNWAY_DAYS,
     limit_scan: int = 2000,
     write: bool = True,
     env: str | None = None,
@@ -334,14 +356,15 @@ def generate_digest(
     runtime_env = normalize_runtime_env(env)
     reports_dir = reports_dir_for_env(runtime_env)
     generated_at = datetime.now(LOCAL_TZ)
-    rows = _query_recent(days=days, limit=limit_scan)
+    queried_rows = _query_recent(days=days, limit=limit_scan)
+    rows = _filter_min_runway(queried_rows, min_runway_days)
     scored_all = bulk_score(rows, profile=profile)
     scored = [s for s in scored_all if s.score >= min_score]
     scored.sort(key=lambda r: r.score, reverse=True)
     opportunities = _opportunity_lookup(rows)
 
-    markdown = render_markdown(profile, days, min_score, scored, opportunities, generated_at)
-    html_doc = render_html(profile, days, min_score, scored, opportunities, generated_at)
+    markdown = render_markdown(profile, days, min_score, min_runway_days, scored, opportunities, generated_at)
+    html_doc = render_html(profile, days, min_score, min_runway_days, scored, opportunities, generated_at)
 
     md_path: Path | None = None
     html_path: Path | None = None
@@ -362,7 +385,10 @@ def generate_digest(
                 candidates_scanned=len(rows),
                 candidates_shown=len(scored),
                 report_path=str(html_path),
-                summary=f"{len(scored)} leads matched the fit threshold from {len(rows)} notices checked.",
+                summary=(
+                    f"{len(scored)} leads matched the fit threshold from {len(rows)} notices "
+                    f"with at least {min_runway_days} days of response runway."
+                ),
                 items_json=json.dumps(items),
             )
         except Exception as exc:  # noqa: BLE001
@@ -372,9 +398,13 @@ def generate_digest(
         "generated_at": generated_at.isoformat(),
         "env": runtime_env,
         "profile": profile,
+        "min_runway_days": min_runway_days,
         "scanned": len(rows),
         "shown": len(scored),
-        "summary": f"{len(scored)} leads matched the fit threshold from {len(rows)} notices checked.",
+        "summary": (
+            f"{len(scored)} leads matched the fit threshold from {len(rows)} notices "
+            f"with at least {min_runway_days} days of response runway."
+        ),
         "lane_counts": _lane_counts(scored),
         "markdown": markdown,
         "html": html_doc,
@@ -390,6 +420,9 @@ def _cli() -> None:
     parser.add_argument("--profile", default="technical_services", choices=available_profiles())
     parser.add_argument("--days", type=int, default=3, help="Look at notices posted in the last N days (default 3).")
     parser.add_argument("--min-score", dest="min_score", type=int, default=2)
+    parser.add_argument("--min-runway-days", dest="min_runway_days", type=int,
+                        default=DEFAULT_MIN_RUNWAY_DAYS,
+                        help=f"Require response deadlines at least this many days out (default {DEFAULT_MIN_RUNWAY_DAYS}).")
     parser.add_argument("--limit-scan", dest="limit_scan", type=int, default=2000)
     parser.add_argument("--env", choices=["prod", "dev"], default=None,
                         help="Runtime state to use for digest history (default: SWCB_ENV or prod).")
@@ -400,6 +433,7 @@ def _cli() -> None:
         profile=args.profile,
         days=args.days,
         min_score=args.min_score,
+        min_runway_days=args.min_runway_days,
         limit_scan=args.limit_scan,
         write=not args.no_write,
         env=args.env,
