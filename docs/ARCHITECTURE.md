@@ -10,8 +10,8 @@ flowchart LR
     C -->|stdio: docker compose run mcp| M["technical-contract-research MCP<br/>Docker one-shot server"]
     D -->|stdio: docker compose run mcp| M
 
-    M --> P["criteria/TECHNICAL_SERVICES_PROFILE.md<br/>broad fit rules + scoring"]
-    M --> Q["Prompt library<br/>technical_services_lead_research.md"]
+    M --> P["criteria/*.md<br/>field-installation, panel, vendor rules"]
+    M --> Q["Prompt library<br/>lead research + panel experts"]
 
     M --> O["search_opportunities"]
     O --> S[("SQLite<br/>data/contracts.db")]
@@ -30,9 +30,13 @@ flowchart LR
     M --> F["search_documents"]
     M --> H["document_index_status"]
     M --> W["publish_research_scan"]
+    M --> V["vendor sourcing tools<br/>list/get/complete jobs"]
+    M --> Z["evaluate_opportunity<br/>independent panel"]
     F --> E
     H --> E
     W --> WB[("Workbench / watchlist<br/>research scans")]
+    V --> JOBS[("Vendor sourcing jobs<br/>data/vendor-sourcing-jobs/")]
+    Z --> PANEL[("Panel verdicts<br/>data/panel-verdicts/")]
     K["Kibana optional dashboard"] --> E
 ```
 
@@ -58,9 +62,29 @@ flowchart TD
     M --> N
     N -->|No| O["Reject or monitor with reason"]
     N -->|Yes| P["Assess now / partner / monitor"]
-    O --> Q["publish_research_scan once"]
-    P --> Q
+    P --> S{"Prime needs outside crew?"}
+    S -->|No| Q["publish_research_scan once"]
+    S -->|Yes| T["Create vendor sourcing job<br/>local subs + call script"]
+    T --> U["Codex completes sourced report<br/>public-web verification"]
+    O --> Q
+    U --> Q
     Q --> R["Workbench card updates"]
+```
+
+## Decision Panel Flow
+
+```mermaid
+flowchart TD
+    A["Workbench card or MCP request"] --> B["evaluate_opportunity(notice_id)"]
+    B --> C["Load mirror metadata + document evidence"]
+    C --> D["Expert prompts<br/>eligibility · fit/PWin · pricing · red team"]
+    D --> E["Aggregator"]
+    E --> F{"Evidence grounded?"}
+    F -->|No| G["Cap confidence below consensus threshold"]
+    F -->|Yes| H["Consensus verdict"]
+    G --> H
+    H --> I[("Panel verdict store")]
+    H --> J["Dashboard / MCP result"]
 ```
 
 ## Runtime Responsibilities
@@ -78,8 +102,10 @@ flowchart TD
 | **Scoring engine** (v2) | Deterministic, explainable lead scoring against the profile rubric. |
 | **Watchlist store** (v2) | Per-opportunity pursuit state, status history, saved searches, digest run log. |
 | **Digest generator** (v2) | Daily ranked markdown + HTML report by capability lane. |
-| **Local dashboard** (v2) | Zero-dependency web UI for search, score, watchlist, saved searches, digest. |
+| **Local dashboard** (v2) | Zero-dependency Workbench for search, scoring, pursuit cards, scans, panel review, and subcontractor sourcing. |
 | **Unified CLI** (v2) | `swcb <command>` dispatcher in front of every script. |
+| **Panel evaluator** | Independent multi-role review that stores evidence-grounded verdicts before pursuing higher-risk work. |
+| **Vendor sourcing** | Sources local subcontractors, generates call/email prep, and lets Codex complete public-source verification reports. |
 
 ## v2 Module Flow
 
@@ -87,15 +113,29 @@ flowchart TD
 flowchart LR
     DB[("SQLite<br/>data/contracts.db")] --> SCORE["scoring.py<br/>tier-1/2 keywords + structural rules"]
     SCORE --> DIGEST["digest.py<br/>ranked markdown + HTML report"]
+    SCORE --> SAP["sap_opportunities.py<br/>simplified acquisition shortlist"]
+    SCORE --> SUBS["subcontract_opportunities.py<br/>prime-with-sub candidates"]
+    SCORE --> PANEL["panel.py<br/>eligibility + fit + pricing + red team"]
     SCORE --> DASH["dashboard.py<br/>local web UI (http.server)"]
     SCORE --> MCP2["mcp_server.py v2 tools<br/>score_opportunities, generate_daily_digest, ..."]
+    SUBS --> VENDORS["source_vendors.py<br/>Places search + outreach prep"]
+    VENDORS --> JOBS[("vendor-sourcing-jobs<br/>queued reports")]
+    PANEL --> VERDICTS[("panel verdict store")]
     DASH <--> WL[("watchlist.db<br/>watchlist + saved searches + digest runs")]
+    DASH <--> JOBS
+    DASH <--> VERDICTS
     DIGEST --> WL
     MCP2 <--> WL
+    MCP2 <--> JOBS
+    MCP2 <--> VERDICTS
     CLI["swcb.py / swcb.bat<br/>unified dispatcher"] --> SCORE
     CLI --> DIGEST
     CLI --> DASH
     CLI --> WL
+    CLI --> SAP
+    CLI --> SUBS
+    CLI --> PANEL
+    CLI --> VENDORS
 ```
 
 ## Boundary Rules
